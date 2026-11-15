@@ -1,0 +1,68 @@
+openapi: 3.0.3
+info:
+  title: Analysis Service
+  version: 1.0.0
+servers:
+  - url: http://localhost:3003
+paths:
+  /health:
+    get:
+      responses:
+        '200': { description: Service healthy }
+        '503': { description: Database unavailable }
+  /analyses:
+    post:
+      summary: Analyze CV against JD
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cvId, jdId]
+              properties:
+                cvId: { type: integer, minimum: 1 }
+                jdId: { type: integer, minimum: 1 }
+      responses:
+        '201': { description: Analysis completed }
+        '400': { description: Invalid input }
+        '404': { description: Related resource not found }
+        '503': { description: Upstream unavailable }
+        '504': { description: Upstream timeout }
+    get:
+      summary: List analyses
+      responses:
+        '200': { description: Analysis list }
+  /analyses/{id}:
+    get:
+      summary: Get analysis
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Analysis found }
+        '404': { description: Not found }
+  /analyses/{id}/skill-gaps:
+    get:
+      summary: Get missing skills
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Skill gaps }
+        '409': { description: Analysis not completed }
+  /analyses/{id}/recommendations:
+    get:
+      summary: Get recommendations
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Recommendations }
+        '409': { description: Analysis not completed }

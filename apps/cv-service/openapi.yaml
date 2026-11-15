@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: CV Service
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+paths:
+  /health:
+    get:
+      responses:
+        '200': { description: Service and database healthy }
+        '503': { description: Database unavailable }
+  /cvs:
+    post:
+      summary: Create CV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, content]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                content: { type: string, minLength: 20 }
+      responses:
+        '201': { description: Created }
+        '400': { description: Business validation error }
+    get:
+      summary: List CVs
+      responses:
+        '200': { description: CV list }
+  /cvs/{id}:
+    get:
+      summary: Get CV
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: CV found }
+        '404': { description: Not found }
+    delete:
+      summary: Delete CV
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+        '404': { description: Not found }

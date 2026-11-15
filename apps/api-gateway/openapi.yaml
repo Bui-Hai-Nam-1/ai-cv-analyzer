@@ -1,0 +1,40 @@
+openapi: 3.0.3
+info:
+  title: AI CV Analyzer API Gateway
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Gateway health
+      responses:
+        '200':
+          description: Gateway is healthy
+  /api/cvs:
+    get:
+      summary: List CVs
+      responses:
+        '200': { description: CV list }
+    post:
+      summary: Create CV
+      responses:
+        '201': { description: CV created }
+        '400': { description: Invalid CV }
+  /api/jds:
+    get:
+      summary: List job descriptions
+      responses:
+        '200': { description: JD list }
+    post:
+      summary: Create job description
+      responses:
+        '201': { description: JD created }
+        '400': { description: Invalid JD }
+  /api/analyses:
+    post:
+      summary: Analyze a CV against a JD
+      responses:
+        '201': { description: Analysis created }
+        '400': { description: Invalid input }
+        '503': { description: Upstream service unavailable }

@@ -1,0 +1,100 @@
+services:
+  api-gateway:
+    build: ./apps/api-gateway
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    environment:
+      PORT: 8080
+      CV_SERVICE_URL: http://cv-service:3001
+      JD_SERVICE_URL: http://jd-service:3002
+      ANALYSIS_SERVICE_URL: http://analysis-service:3003
+    depends_on:
+      - cv-service
+      - jd-service
+      - analysis-service
+    restart: unless-stopped
+
+  cv-service:
+    build: ./apps/cv-service
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://cv_user:cv_pass@cv-db:5432/cv_db
+    depends_on:
+      cv-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  jd-service:
+    build: ./apps/jd-service
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgres://jd_user:jd_pass@jd-db:5432/jd_db
+    depends_on:
+      jd-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  analysis-service:
+    build: ./apps/analysis-service
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgres://analysis_user:analysis_pass@analysis-db:5432/analysis_db
+      CV_SERVICE_URL: http://cv-service:3001
+      JD_SERVICE_URL: http://jd-service:3002
+      HTTP_TIMEOUT_MS: 2500
+      HTTP_RETRIES: 1
+    depends_on:
+      analysis-db:
+        condition: service_healthy
+      cv-service:
+        condition: service_started
+      jd-service:
+        condition: service_started
+    restart: unless-stopped
+
+  cv-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cv_user
+      POSTGRES_PASSWORD: cv_pass
+      POSTGRES_DB: cv_db
+    volumes:
+      - cv_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cv_user -d cv_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  jd-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: jd_user
+      POSTGRES_PASSWORD: jd_pass
+      POSTGRES_DB: jd_db
+    volumes:
+      - jd_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jd_user -d jd_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  analysis-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: analysis_user
+      POSTGRES_PASSWORD: analysis_pass
+      POSTGRES_DB: analysis_db
+    volumes:
+      - analysis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analysis_user -d analysis_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  cv_data:
+  jd_data:
+  analysis_data:

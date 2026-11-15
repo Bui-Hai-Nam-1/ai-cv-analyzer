@@ -1,0 +1,149 @@
+{
+  "info": {
+    "name": "AI CV Analyzer - Starter API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Gateway health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Create CV - success",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Nguyen Van A\", \"email\": \"a@example.com\", \"content\": \"Backend developer with Node.js PostgreSQL REST API and Git project experience.\"}"
+        },
+        "url": "{{baseUrl}}/api/cvs"
+      }
+    },
+    {
+      "name": "List CVs",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/cvs"
+      }
+    },
+    {
+      "name": "Get CV by ID",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/cvs/1"
+      }
+    },
+    {
+      "name": "Create CV - business error",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"A\", \"content\": \"too short\"}"
+        },
+        "url": "{{baseUrl}}/api/cvs"
+      }
+    },
+    {
+      "name": "Create JD - success",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"title\": \"Backend Intern\", \"company\": \"Example Co\", \"content\": \"Requirements: Node.js PostgreSQL Docker REST API Git communication\"}"
+        },
+        "url": "{{baseUrl}}/api/jds"
+      }
+    },
+    {
+      "name": "List JDs",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/jds"
+      }
+    },
+    {
+      "name": "Get JD by ID",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/jds/1"
+      }
+    },
+    {
+      "name": "Create analysis",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cvId\": 1, \"jdId\": 1}"
+        },
+        "url": "{{baseUrl}}/api/analyses"
+      }
+    },
+    {
+      "name": "Get analysis",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/analyses/1"
+      }
+    },
+    {
+      "name": "Get skill gaps",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/analyses/1/skill-gaps"
+      }
+    },
+    {
+      "name": "Get recommendations",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/analyses/1/recommendations"
+      }
+    },
+    {
+      "name": "Analysis invalid input",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cvId\": -1, \"jdId\": \"abc\"}"
+        },
+        "url": "{{baseUrl}}/api/analyses"
+      }
+    }
+  ]
+}

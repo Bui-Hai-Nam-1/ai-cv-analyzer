@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: JD Service
+  version: 1.0.0
+servers:
+  - url: http://localhost:3002
+paths:
+  /health:
+    get:
+      responses:
+        '200': { description: Service and database healthy }
+        '503': { description: Database unavailable }
+  /jds:
+    post:
+      summary: Create job description
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title: { type: string }
+                company: { type: string }
+                content: { type: string, minLength: 20 }
+      responses:
+        '201': { description: Created }
+        '400': { description: Business validation error }
+    get:
+      summary: List job descriptions
+      responses:
+        '200': { description: JD list }
+  /jds/{id}:
+    get:
+      summary: Get JD
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: JD found }
+        '404': { description: Not found }
+    delete:
+      summary: Delete JD
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+        '404': { description: Not found }
