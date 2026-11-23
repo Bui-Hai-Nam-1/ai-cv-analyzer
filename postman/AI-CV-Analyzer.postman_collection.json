@@ -3,12 +3,33 @@
     "name": "AI CV Analyzer - Starter API Tests",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "cvServiceUrl",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "cvId",
+      "value": "1"
+    }
+  ],
   "item": [
     {
       "name": "Gateway health",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "CV Service health",
+      "request": {
+        "method": "GET",
+        "url": "{{cvServiceUrl}}/health"
       }
     },
     {
@@ -26,7 +47,19 @@
           "raw": "{\"name\": \"Nguyen Van A\", \"email\": \"a@example.com\", \"content\": \"Backend developer with Node.js PostgreSQL REST API and Git project experience.\"}"
         },
         "url": "{{baseUrl}}/api/cvs"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CV is created', function () { pm.response.to.have.status(201); });",
+              "if (pm.response.code === 201) pm.collectionVariables.set('cvId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Upload CV - PDF or DOCX",
@@ -53,7 +86,19 @@
           ]
         },
         "url": "{{baseUrl}}/api/cvs"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CV file is uploaded', function () { pm.response.to.have.status(201); });",
+              "if (pm.response.code === 201) pm.collectionVariables.set('cvId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "List CVs",
@@ -66,8 +111,26 @@
       "name": "Get CV by ID",
       "request": {
         "method": "GET",
-        "url": "{{baseUrl}}/api/cvs/1"
+        "url": "{{baseUrl}}/api/cvs/{{cvId}}"
       }
+    },
+    {
+      "name": "Delete CV by ID",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/cvs/{{cvId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CV is deleted', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Create CV - business error",
