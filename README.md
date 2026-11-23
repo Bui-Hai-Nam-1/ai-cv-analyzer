@@ -27,7 +27,7 @@ Health: http://localhost:8080/health
 Dừng: `docker compose down`  
 Dừng và xóa cả dữ liệu DB: `docker compose down -v`
 
-## API chính
+## API chín
 
 - `POST /api/cvs` — tạo CV
 - `GET /api/cvs` — danh sách CV
