@@ -1,54 +1,209 @@
 openapi: 3.0.3
 info:
   title: CV Service
-  version: 1.0.0
+  version: 1.1.0
+  description: Store CV files and return extracted, structured profile data.
 servers:
   - url: http://localhost:3001
 paths:
   /health:
     get:
+      summary: Check service and database health
       responses:
-        '200': { description: Service and database healthy }
-        '503': { description: Database unavailable }
+        '200':
+          description: Service and database are healthy
+        '503':
+          description: Database is unavailable
   /cvs:
     post:
-      summary: Create CV
+      summary: Upload and analyze a PDF/DOCX CV, or create one from text
+      description: >
+        Multipart uploads accept one PDF or DOCX file up to 10 MB in the file
+        field. For backward compatibility, JSON requests with name and content
+        are also supported. OPENAI_API_KEY enables AI extraction; otherwise the
+        response reports heuristic extraction as its provider.
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
           application/json:
             schema:
               type: object
               required: [name, content]
               properties:
-                name: { type: string }
-                email: { type: string }
-                content: { type: string, minLength: 20 }
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                content:
+                  type: string
+                  minLength: 20
       responses:
-        '201': { description: Created }
-        '400': { description: Business validation error }
+        '201':
+          description: CV stored and analyzed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cv'
+        '400':
+          description: Invalid request or missing required information
+        '413':
+          description: File or extracted content exceeds size limits
+        '415':
+          description: File type is not PDF or DOCX
+        '422':
+          description: File cannot be parsed
+        '502':
+          description: Configured AI provider failed to analyze the CV
     get:
       summary: List CVs
       responses:
-        '200': { description: CV list }
+        '200':
+          description: CV list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cv'
   /cvs/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
     get:
-      summary: Get CV
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+      summary: Get a CV and its extracted data
       responses:
-        '200': { description: CV found }
-        '404': { description: Not found }
+        '200':
+          description: CV found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cv'
+        '400':
+          description: Invalid CV identifier
+        '404':
+          description: CV not found
     delete:
-      summary: Delete CV
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+      summary: Delete a CV and its uploaded file
       responses:
-        '204': { description: Deleted }
-        '404': { description: Not found }
+        '204':
+          description: CV deleted
+        '400':
+          description: Invalid CV identifier
+        '404':
+          description: CV not found
+components:
+  schemas:
+    Cv:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        content:
+          type: string
+          description: Extracted plain-text CV; consumed by Analysis Service.
+        file_name:
+          type: string
+          nullable: true
+        parsed_data:
+          $ref: '#/components/schemas/ParsedCv'
+        analysis_provider:
+          type: string
+          description: AI model name or heuristic when no AI key is configured.
+        created_at:
+          type: string
+          format: date-time
+    ParsedCv:
+      type: object
+      required: [personalInformation, education, technicalSkills, projects, experience, certifications, languages]
+      properties:
+        personalInformation:
+          type: object
+          properties:
+            fullName: { type: string, nullable: true }
+            email: { type: string, nullable: true }
+            phone: { type: string, nullable: true }
+            location: { type: string, nullable: true }
+            linkedin: { type: string, nullable: true }
+            website: { type: string, nullable: true }
+        education:
+          type: array
+          items:
+            type: object
+            properties:
+              institution: { type: string, nullable: true }
+              degree: { type: string, nullable: true }
+              fieldOfStudy: { type: string, nullable: true }
+              startDate: { type: string, nullable: true }
+              endDate: { type: string, nullable: true }
+              details: { type: string, nullable: true }
+        technicalSkills:
+          type: array
+          items:
+            type: object
+            properties:
+              category: { type: string }
+              skills:
+                type: array
+                items: { type: string }
+        projects:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string, nullable: true }
+              description: { type: string, nullable: true }
+              technologies:
+                type: array
+                items: { type: string }
+              url: { type: string, nullable: true }
+        experience:
+          type: array
+          items:
+            type: object
+            properties:
+              company: { type: string, nullable: true }
+              position: { type: string, nullable: true }
+              startDate: { type: string, nullable: true }
+              endDate: { type: string, nullable: true }
+              description: { type: string, nullable: true }
+              technologies:
+                type: array
+                items: { type: string }
+        certifications:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string, nullable: true }
+              issuer: { type: string, nullable: true }
+              date: { type: string, nullable: true }
+        languages:
+          type: array
+          items:
+            type: object
+            properties:
+              language: { type: string, nullable: true }
+              proficiency: { type: string, nullable: true }
