@@ -29,6 +29,33 @@
       }
     },
     {
+      "name": "Upload CV - PDF or DOCX",
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "name",
+              "value": "Nguyen Van A",
+              "type": "text"
+            },
+            {
+              "key": "email",
+              "value": "a@example.com",
+              "type": "text"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/cvs"
+      }
+    },
+    {
       "name": "List CVs",
       "request": {
         "method": "GET",

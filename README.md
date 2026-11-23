@@ -50,6 +50,30 @@ curl -X POST http://localhost:8080/api/cvs \
   -d '{"name":"Nguyen Van A","email":"a@example.com","content":"Skills: Node.js, PostgreSQL, Git. Project: REST API"}'
 ```
 
+### Upload và trích xuất CV PDF/DOCX
+
+CV Service nhận một file PDF hoặc DOCX, tối đa 10 MB. File được lưu trong volume
+`cv_uploads`; nội dung trích xuất và dữ liệu có cấu trúc được lưu trong database
+CV riêng. Có thể bỏ `name`/`email` nếu thông tin đó có trong CV.
+
+```bash
+curl -X POST http://localhost:8080/api/cvs \
+  -F "file=@./resume.pdf" \
+  -F "name=Nguyen Van A"
+```
+
+Phản hồi giữ trường `content` để Analysis Service hiện tại tiếp tục hoạt động,
+đồng thời có `parsed_data` gồm `personalInformation`, `education`,
+`technicalSkills`, `projects`, `experience`, `certifications` và `languages`.
+Trường `analysis_provider` cho biết CV được phân tích bằng model nào hay bằng
+`heuristic`.
+
+Để bật trích xuất bằng AI, đặt `OPENAI_API_KEY` trong `.env` (có thể cấu hình
+`OPENAI_BASE_URL` và `OPENAI_MODEL`). Nếu không cấu hình key, service vẫn hoạt
+động với heuristic và phản hồi ghi rõ nguồn phân tích. Khi bật AI, nội dung CV
+sẽ được gửi đến provider đã cấu hình; cần thông báo và có sự đồng ý phù hợp.
+Không commit API key.
+
 ### Ví dụ tạo JD
 
 ```bash
