@@ -3,7 +3,11 @@ const express = require('express');
 const { pool } = require('../db');
 
 const { buildAnalysis } = require('../services/analysis-engine');
-const { getWithRetry } = require('../services/http-client');
+const {
+  getWithRetry,
+  getCircuitStatus
+} = require('../services/http-client');
+
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -153,6 +157,25 @@ router.post('/', async (req, res) => {
         ? (status >= 500 ? 'PENDING' : 'FAILED')
         : undefined,
       message: 'Không thể hoàn tất phân tích do dữ liệu liên quan hoặc service phụ thuộc không khả dụng.'
+    });
+  }
+});
+
+// GET /analyses/circuit-status
+// Đặt trước GET /:id để tránh Express hiểu circuit-status là ID.
+router.get('/circuit-status', (_req, res) => {
+  try {
+    return res.json({
+      service: 'analysis-service',
+      circuitBreakers: getCircuitStatus()
+    });
+  } catch (error) {
+    logger.error('GET_CIRCUIT_STATUS_FAILED', {
+      error: error.message
+    });
+
+    return res.status(500).json({
+      error: 'INTERNAL_ERROR'
     });
   }
 });
