@@ -1,8 +1,10 @@
+
 const express = require('express');
 const { pool } = require('../db');
 
 const { buildAnalysis } = require('../services/analysis-engine');
 const { getWithRetry } = require('../services/http-client');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -22,11 +24,22 @@ function isValidId(id) {
 router.post('/', async (req, res) => {
   const cvId = Number(req.body?.cvId);
   const jdId = Number(req.body?.jdId);
+  const startedAt = Date.now();
+
+  logger.info('ANALYSIS_REQUEST_RECEIVED', {
+    cvId,
+    jdId
+  });
 
   if (
     !Number.isInteger(cvId) || cvId <= 0 ||
     !Number.isInteger(jdId) || jdId <= 0
   ) {
+    logger.warn('ANALYSIS_INVALID_INPUT', {
+      cvId,
+      jdId
+    });
+
     return res.status(400).json({
       error: 'INVALID_ANALYSIS_INPUT',
       message: 'cvId và jdId phải là số nguyên dương'
@@ -46,6 +59,13 @@ router.post('/', async (req, res) => {
 
     analysisId = created.rows[0].id;
 
+    logger.info('ANALYSIS_CREATED', {
+      analysisId,
+      cvId,
+      jdId,
+      status: 'PENDING'
+    });
+
     // Gọi CV Service và JD Service song song.
     const [cv, jd] = await Promise.all([
       getWithRetry(`${cvBase}/cvs/${cvId}`),
@@ -54,6 +74,13 @@ router.post('/', async (req, res) => {
 
     // Chạy thuật toán phân tích.
     const result = buildAnalysis(cv, jd);
+
+    logger.info('ANALYSIS_COMPUTED', {
+      analysisId,
+      matchScore: result.matchScore,
+      matchedSkillCount: result.matchedSkills.length,
+      missingSkillCount: result.missingSkills.length
+    });
 
     // Lưu kết quả.
     const saved = await pool.query(
@@ -67,14 +94,31 @@ router.post('/', async (req, res) => {
       [JSON.stringify(result), analysisId]
     );
 
+    logger.info('ANALYSIS_COMPLETED', {
+      analysisId,
+      status: 'COMPLETED',
+      durationMs: Date.now() - startedAt
+    });
+
     return res.status(201).json(saved.rows[0]);
 
   } catch (error) {
+    const status = error.status || 503;
+
+    logger.error('ANALYSIS_FAILED', {
+      analysisId: analysisId || null,
+      cvId,
+      jdId,
+      error: error.message,
+      statusCode: status,
+      durationMs: Date.now() - startedAt
+    });
+
     // Lỗi nghiệp vụ: chuyển sang FAILED.
     if (
       analysisId &&
-      error.status >= 400 &&
-      error.status < 500
+      status >= 400 &&
+      status < 500
     ) {
       await pool.query(
         `UPDATE analyses
@@ -83,12 +127,15 @@ router.post('/', async (req, res) => {
              updated_at = NOW()
          WHERE id = $2`,
         [error.message, analysisId]
-      ).catch(() => {});
+      ).catch((dbError) => {
+        logger.error('ANALYSIS_STATUS_UPDATE_FAILED', {
+          analysisId,
+          error: dbError.message
+        });
+      });
     }
 
-    // Lỗi hạ tầng: giữ PENDING để tránh báo thành công giả.
-    const status = error.status || 503;
-
+    // Lỗi hạ tầng: giữ PENDING.
     let errorCode = 'UPSTREAM_UNAVAILABLE';
 
     if (status === 504) {
@@ -118,7 +165,11 @@ router.get('/', async (_req, res) => {
     );
 
     return res.json(result.rows);
-  } catch {
+  } catch (error) {
+    logger.error('GET_ANALYSES_FAILED', {
+      error: error.message
+    });
+
     return res.status(500).json({
       error: 'INTERNAL_ERROR'
     });
@@ -147,7 +198,12 @@ router.get('/:id', async (req, res) => {
 
     return res.json(result.rows[0]);
 
-  } catch {
+  } catch (error) {
+    logger.error('GET_ANALYSIS_FAILED', {
+      analysisId: req.params.id,
+      error: error.message
+    });
+
     return res.status(500).json({
       error: 'INTERNAL_ERROR'
     });
@@ -188,7 +244,12 @@ router.get('/:id/skill-gaps', async (req, res) => {
       missingSkills: analysis.result?.missingSkills || []
     });
 
-  } catch {
+  } catch (error) {
+    logger.error('GET_SKILL_GAPS_FAILED', {
+      analysisId: req.params.id,
+      error: error.message
+    });
+
     return res.status(500).json({
       error: 'INTERNAL_ERROR'
     });
@@ -229,7 +290,12 @@ router.get('/:id/recommendations', async (req, res) => {
       recommendations: analysis.result?.recommendations || []
     });
 
-  } catch {
+  } catch (error) {
+    logger.error('GET_RECOMMENDATIONS_FAILED', {
+      analysisId: req.params.id,
+      error: error.message
+    });
+
     return res.status(500).json({
       error: 'INTERNAL_ERROR'
     });

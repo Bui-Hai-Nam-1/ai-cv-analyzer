@@ -43,6 +43,8 @@ services:
       JD_SERVICE_URL: http://jd-service:3002
       HTTP_TIMEOUT_MS: 2500
       HTTP_RETRIES: 1
+      CB_FAILURE_THRESHOLD: 3
+      CB_RESET_TIMEOUT_MS: 10000
     depends_on:
       analysis-db:
         condition: service_healthy

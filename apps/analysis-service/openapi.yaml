@@ -6,8 +6,9 @@ info:
   description: >
     Service phân tích CV và Job Description, tính Match Score,
     xác định kỹ năng còn thiếu và đưa ra khuyến nghị.
-    Phiên bản hiện tại sử dụng phương pháp so khớp kỹ năng và từ khóa.
-  version: 1.1.0
+    Phiên bản hiện tại sử dụng phương pháp so khớp kỹ năng và từ khóa,
+    kết hợp Weighted Skill Matching và Circuit Breaker.
+  version: 1.2.0
 
 servers:
   - url: http://localhost:3003
@@ -28,13 +29,36 @@ paths:
         '503':
           description: Database unavailable
 
+  /analyses/circuit-status:
+    get:
+      tags: [Analysis]
+      summary: Get Circuit Breaker status
+      description: Returns the current state of each upstream Circuit Breaker.
+      responses:
+        '200':
+          description: Circuit Breaker statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    example: analysis-service
+                  circuitBreakers:
+                    type: object
+                    additionalProperties:
+                      $ref: '#/components/schemas/CircuitBreakerStatus'
+        '500':
+          description: Internal server error
+
   /analyses:
     post:
       tags: [Analysis]
       summary: Analyze a CV against a Job Description
       description: >
         Creates an analysis, retrieves CV and JD data from their services,
-        and calculates the matching result.
+        and calculates the matching result using weighted skill matching.
       requestBody:
         required: true
         content:
@@ -66,7 +90,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '503':
-          description: Upstream service unavailable
+          description: Upstream service unavailable or circuit breaker open
           content:
             application/json:
               schema:
@@ -123,6 +147,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  analysisId:
+                    type: integer
                   missingSkills:
                     type: array
                     items:
@@ -174,7 +200,21 @@ components:
         minimum: 1
 
   schemas:
-        CreateAnalysisRequest:
+    CircuitBreakerStatus:
+      type: object
+      properties:
+        state:
+          type: string
+          enum: [CLOSED, OPEN, HALF_OPEN]
+        failures:
+          type: integer
+          example: 0
+        openedAt:
+          type: integer
+          nullable: true
+          description: Timestamp in milliseconds when the circuit opened
+
+    CreateAnalysisRequest:
       type: object
       required:
         - cvId
@@ -200,6 +240,7 @@ components:
           type: integer
           minimum: 0
           maximum: 100
+
     Analysis:
       type: object
       properties:
@@ -231,13 +272,12 @@ components:
       properties:
         strengths:
           type: array
-          description: Các kỹ năng CV đáp ứng yêu cầu trong JD
+          description: Skills in the CV that match the JD
           items:
             type: string
-
         weaknesses:
           type: array
-          description: Các kỹ năng còn thiếu và mức độ ưu tiên
+          description: Missing skills and their priority
           items:
             type: object
             properties:
@@ -286,7 +326,7 @@ components:
                 enum: [REQUIRED, PREFERRED, NORMAL]
               weight:
                 type: number
-                scoreBreakdown:
+        scoreBreakdown:
           type: object
           properties:
             matchedWeight:
@@ -309,6 +349,7 @@ components:
           type: array
           items:
             type: string
+
     Error:
       type: object
       properties:
