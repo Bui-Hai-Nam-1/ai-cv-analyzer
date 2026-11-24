@@ -174,7 +174,7 @@ components:
         minimum: 1
 
   schemas:
-    CreateAnalysisRequest:
+        CreateAnalysisRequest:
       type: object
       required:
         - cvId
@@ -189,6 +189,17 @@ components:
           minimum: 1
           example: 1
 
+    PriorityScore:
+      type: object
+      properties:
+        matched:
+          type: integer
+        total:
+          type: integer
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
     Analysis:
       type: object
       properties:
@@ -218,6 +229,25 @@ components:
     AnalysisResult:
       type: object
       properties:
+        strengths:
+          type: array
+          description: Các kỹ năng CV đáp ứng yêu cầu trong JD
+          items:
+            type: string
+
+        weaknesses:
+          type: array
+          description: Các kỹ năng còn thiếu và mức độ ưu tiên
+          items:
+            type: object
+            properties:
+              skill:
+                type: string
+              priority:
+                type: string
+                enum: [REQUIRED, PREFERRED, NORMAL]
+              explanation:
+                type: string
         note:
           type: string
         matchScore:
@@ -256,7 +286,7 @@ components:
                 enum: [REQUIRED, PREFERRED, NORMAL]
               weight:
                 type: number
-        scoreBreakdown:
+                scoreBreakdown:
           type: object
           properties:
             matchedWeight:
@@ -266,6 +296,15 @@ components:
             formula:
               type: string
               example: matchedWeight / totalWeight * 100
+            byPriority:
+              type: object
+              properties:
+                required:
+                  $ref: '#/components/schemas/PriorityScore'
+                preferred:
+                  $ref: '#/components/schemas/PriorityScore'
+                normal:
+                  $ref: '#/components/schemas/PriorityScore'
         recommendations:
           type: array
           items:

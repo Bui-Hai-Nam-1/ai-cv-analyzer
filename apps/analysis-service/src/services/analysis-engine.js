@@ -137,7 +137,50 @@ function buildAnalysis(cv, jd) {
   const matchScore = totalWeight > 0
     ? Math.round((matchedWeight / totalWeight) * 100)
     : 0;
+  // Analyze matching results by priority
+  const priorityBreakdown = {};
 
+  for (const priority of ['REQUIRED', 'PREFERRED', 'NORMAL']) {
+    const skills = skillDetails.filter(
+      item => item.priority === priority
+    );
+
+    const matched = skills.filter(
+      item => item.status === 'MATCHED'
+    ).length;
+
+    const total = skills.length;
+
+    priorityBreakdown[priority.toLowerCase()] = {
+      matched,
+      total,
+      score: total > 0
+        ? Math.round((matched / total) * 100)
+        : 0
+    };
+  }
+
+  // Explain strengths based on skills found in the CV
+  const strengths = matchedSkills.map(skill =>
+    `CV có đề cập đến kỹ năng ${skill}, phù hợp với yêu cầu trong JD.`
+  );
+
+  // Explain weaknesses based on missing skills
+  const weaknesses = missingSkills.map(skill => {
+    const detail = skillDetails.find(
+      item => item.skill === skill
+    );
+
+    return {
+      skill,
+      priority: detail.priority,
+      explanation: detail.priority === 'REQUIRED'
+        ? `CV chưa thể hiện kỹ năng ${skill}, trong khi đây là yêu cầu bắt buộc.`
+        : detail.priority === 'PREFERRED'
+          ? `CV chưa thể hiện kỹ năng ${skill}, đây là kỹ năng được ưu tiên.`
+          : `CV chưa thể hiện kỹ năng ${skill} được đề cập trong JD.`
+    };
+  });
   const recommendations = missingSkills.slice(0, 5).map(skill => {
     const detail = skillDetails.find(item => item.skill === skill);
 
@@ -156,6 +199,8 @@ function buildAnalysis(cv, jd) {
     matchScore,
     matchedSkills,
     missingSkills,
+    strengths,
+    weaknesses,
     requiredSkills: skillDetails
       .filter(item => item.priority === 'REQUIRED')
       .map(item => item.skill),
@@ -164,9 +209,10 @@ function buildAnalysis(cv, jd) {
       .map(item => item.skill),
     skillDetails,
     scoreBreakdown: {
-      matchedWeight,
-      totalWeight,
-      formula: 'matchedWeight / totalWeight * 100'
+        matchedWeight,
+        totalWeight,
+        formula: 'matchedWeight / totalWeight * 100',
+        byPriority: priorityBreakdown
     },
     recommendations,
     note: 'Match Score sử dụng phương pháp so khớp kỹ năng có trọng số dựa trên mức độ ưu tiên được nhận diện trong JD. Đây là thuật toán MVP dựa trên từ khóa, không phải đánh giá AI chuyên sâu.'

@@ -81,6 +81,13 @@ test('Integration: Gateway → CV → JD → Analysis', async () => {
 
   assert.ok(result.matchScore >= 0);
   assert.ok(result.matchScore <= 100);
+  assert.ok(Array.isArray(result.strengths));
+assert.ok(Array.isArray(result.weaknesses));
+assert.ok(result.scoreBreakdown);
+assert.ok(result.scoreBreakdown.byPriority);
+assert.ok(result.scoreBreakdown.byPriority.required);
+assert.ok(result.scoreBreakdown.byPriority.preferred);
+assert.ok(result.scoreBreakdown.byPriority.normal);
 
   assert.ok(Array.isArray(result.matchedSkills));
   assert.ok(Array.isArray(result.missingSkills));
