@@ -1,10 +1,10 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-
 const {
   extractTerms,
   containsSkill,
+  getSkillPriority,
   buildAnalysis
 } = require('../src/services/analysis-engine');
 
@@ -93,4 +93,41 @@ test('Does not invent skills that are not in the JD', () => {
   assert.deepEqual(result.matchedSkills, ['javascript']);
   assert.deepEqual(result.missingSkills, ['node.js']);
   assert.equal(result.matchScore, 50);
+});
+test('Identifies required skills', () => {
+  const result = getSkillPriority(
+    'Required: Node.js',
+    'node.js'
+  );
+
+  assert.equal(result.priority, 'REQUIRED');
+  assert.equal(result.weight, 2);
+});
+
+test('Identifies preferred skills', () => {
+  const result = getSkillPriority(
+    'Preferred: Docker',
+    'docker'
+  );
+
+  assert.equal(result.priority, 'PREFERRED');
+  assert.equal(result.weight, 1.5);
+});
+
+test('Calculates weighted match score correctly', () => {
+  const cv = {
+    content: 'Node.js'
+  };
+
+  const jd = {
+    content: 'Required: Node.js. Preferred: Docker.'
+  };
+
+  const result = buildAnalysis(cv, jd);
+
+  assert.equal(result.matchScore, 57);
+  assert.deepEqual(result.requiredSkills, ['node.js']);
+  assert.deepEqual(result.preferredSkills, ['docker']);
+  assert.equal(result.scoreBreakdown.matchedWeight, 2);
+  assert.equal(result.scoreBreakdown.totalWeight, 3.5);
 });

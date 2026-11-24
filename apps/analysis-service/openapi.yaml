@@ -224,6 +224,7 @@ components:
           type: number
           minimum: 0
           maximum: 100
+          example: 57
         matchedSkills:
           type: array
           items:
@@ -232,11 +233,43 @@ components:
           type: array
           items:
             type: string
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        preferredSkills:
+          type: array
+          items:
+            type: string
+        skillDetails:
+          type: array
+          items:
+            type: object
+            properties:
+              skill:
+                type: string
+              status:
+                type: string
+                enum: [MATCHED, MISSING]
+              priority:
+                type: string
+                enum: [REQUIRED, PREFERRED, NORMAL]
+              weight:
+                type: number
+        scoreBreakdown:
+          type: object
+          properties:
+            matchedWeight:
+              type: number
+            totalWeight:
+              type: number
+            formula:
+              type: string
+              example: matchedWeight / totalWeight * 100
         recommendations:
           type: array
           items:
             type: string
-
     Error:
       type: object
       properties:
