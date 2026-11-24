@@ -1,68 +1,250 @@
+
 openapi: 3.0.3
+
 info:
   title: Analysis Service
-  version: 1.0.0
+  description: >
+    Service phân tích CV và Job Description, tính Match Score,
+    xác định kỹ năng còn thiếu và đưa ra khuyến nghị.
+    Phiên bản hiện tại sử dụng phương pháp so khớp kỹ năng và từ khóa.
+  version: 1.1.0
+
 servers:
   - url: http://localhost:3003
+    description: Analysis Service direct access
+
+tags:
+  - name: Health
+  - name: Analysis
+
 paths:
   /health:
     get:
+      tags: [Health]
+      summary: Check service health
       responses:
-        '200': { description: Service healthy }
-        '503': { description: Database unavailable }
+        '200':
+          description: Service is healthy
+        '503':
+          description: Database unavailable
+
   /analyses:
     post:
-      summary: Analyze CV against JD
+      tags: [Analysis]
+      summary: Analyze a CV against a Job Description
+      description: >
+        Creates an analysis, retrieves CV and JD data from their services,
+        and calculates the matching result.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [cvId, jdId]
-              properties:
-                cvId: { type: integer, minimum: 1 }
-                jdId: { type: integer, minimum: 1 }
+              $ref: '#/components/schemas/CreateAnalysisRequest'
+            example:
+              cvId: 1
+              jdId: 1
       responses:
-        '201': { description: Analysis completed }
-        '400': { description: Invalid input }
-        '404': { description: Related resource not found }
-        '503': { description: Upstream unavailable }
-        '504': { description: Upstream timeout }
+        '201':
+          description: Analysis completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '400':
+          description: Invalid analysis input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: INVALID_ANALYSIS_INPUT
+        '404':
+          description: CV or JD not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Upstream service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '504':
+          description: Upstream service timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     get:
-      summary: List analyses
+      tags: [Analysis]
+      summary: List all analyses
       responses:
-        '200': { description: Analysis list }
+        '200':
+          description: List of analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Analysis'
+
   /analyses/{id}:
     get:
-      summary: Get analysis
+      tags: [Analysis]
+      summary: Get an analysis by ID
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+        - $ref: '#/components/parameters/AnalysisId'
       responses:
-        '200': { description: Analysis found }
-        '404': { description: Not found }
+        '200':
+          description: Analysis found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '400':
+          description: Invalid analysis ID
+        '404':
+          description: Analysis not found
+
   /analyses/{id}/skill-gaps:
     get:
-      summary: Get missing skills
+      tags: [Analysis]
+      summary: Get missing skills of an analysis
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+        - $ref: '#/components/parameters/AnalysisId'
       responses:
-        '200': { description: Skill gaps }
-        '409': { description: Analysis not completed }
+        '200':
+          description: Missing skills retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  missingSkills:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Invalid analysis ID
+        '404':
+          description: Analysis not found
+        '409':
+          description: Analysis is not completed
+
   /analyses/{id}/recommendations:
     get:
-      summary: Get recommendations
+      tags: [Analysis]
+      summary: Get recommendations of an analysis
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+        - $ref: '#/components/parameters/AnalysisId'
       responses:
-        '200': { description: Recommendations }
-        '409': { description: Analysis not completed }
+        '200':
+          description: Recommendations retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analysisId:
+                    type: integer
+                    example: 20
+                  recommendations:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Invalid analysis ID
+        '404':
+          description: Analysis not found
+        '409':
+          description: Analysis is not completed
+
+components:
+  parameters:
+    AnalysisId:
+      name: id
+      in: path
+      required: true
+      description: Positive integer analysis ID
+      schema:
+        type: integer
+        minimum: 1
+
+  schemas:
+    CreateAnalysisRequest:
+      type: object
+      required:
+        - cvId
+        - jdId
+      properties:
+        cvId:
+          type: integer
+          minimum: 1
+          example: 1
+        jdId:
+          type: integer
+          minimum: 1
+          example: 1
+
+    Analysis:
+      type: object
+      properties:
+        id:
+          type: integer
+        cv_id:
+          type: integer
+        jd_id:
+          type: integer
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED]
+        result:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AnalysisResult'
+        error:
+          nullable: true
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AnalysisResult:
+      type: object
+      properties:
+        note:
+          type: string
+        matchScore:
+          type: number
+          minimum: 0
+          maximum: 100
+        matchedSkills:
+          type: array
+          items:
+            type: string
+        missingSkills:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        analysisId:
+          type: integer
+        status:
+          type: string
