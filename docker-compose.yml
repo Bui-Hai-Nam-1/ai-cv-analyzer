@@ -8,6 +8,7 @@ services:
       CV_SERVICE_URL: http://cv-service:3001
       JD_SERVICE_URL: http://jd-service:3002
       ANALYSIS_SERVICE_URL: http://analysis-service:3003
+      PROXY_TIMEOUT_MS: ${PROXY_TIMEOUT_MS:-190000}
     depends_on:
       - cv-service
       - jd-service
@@ -25,6 +26,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-180000}
     depends_on:
       cv-db:
         condition: service_healthy
@@ -42,6 +44,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-180000}
     depends_on:
       jd-db:
         condition: service_healthy
@@ -58,6 +61,7 @@ services:
       JD_SERVICE_URL: http://jd-service:3002
       HTTP_TIMEOUT_MS: ${HTTP_TIMEOUT_MS:-2500}
       HTTP_RETRIES: ${HTTP_RETRIES:-1}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-180000}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}

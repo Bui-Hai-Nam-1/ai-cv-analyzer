@@ -91,6 +91,34 @@ Trường `analysis_provider` cho biết CV được phân tích bằng model n�
 sẽ được gửi đến provider đã cấu hình; cần thông báo và có sự đồng ý phù hợp.
 Không commit API key.
 
+### Dùng AI local miễn phí với Ollama
+
+Cài Ollama trên Windows và tải model:
+
+```powershell
+ollama pull qwen2.5:3b
+```
+
+Trong `.env`, dùng cấu hình Ollama OpenAI-compatible:
+
+```env
+OPENAI_API_KEY=ollama
+OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+OPENAI_MODEL=qwen2.5:3b
+```
+
+`ollama` là giá trị giả để tương thích API, không phải secret. Docker Desktop dùng
+`host.docker.internal` để các container truy cập Ollama trên Windows. Tạo lại
+các service để nạp cấu hình:
+
+```powershell
+docker compose up -d --force-recreate cv-service jd-service analysis-service
+```
+
+Model local có thể chậm ở lần chạy đầu. `AI_TIMEOUT_MS` và `PROXY_TIMEOUT_MS`
+trong `.env` mặc định lần lượt là 180 và 190 giây để cho phép Ollama khởi động
+và suy luận.
+
 ### Ví dụ tạo JD
 
 ```bash

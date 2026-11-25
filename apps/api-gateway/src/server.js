@@ -14,8 +14,8 @@ function route(path, target, upstreamBasePath) {
     changeOrigin: true,
     // Express removes the mounted prefix before proxy middleware receives req.url.
     pathRewrite: (requestPath) => `${upstreamBasePath}${requestPath === '/' ? '' : requestPath}`, 
-    proxyTimeout: 30000,
-    timeout: 30000,
+    proxyTimeout: Number(process.env.PROXY_TIMEOUT_MS || 190000),
+    timeout: Number(process.env.PROXY_TIMEOUT_MS || 190000),
     on: {
       error: (error, _req, res) => {
         if (!res.headersSent) {

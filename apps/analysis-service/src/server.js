@@ -49,7 +49,7 @@ async function getWithRetry(url) {
 async function createAiRecommendations(result, cv, jd) {
   const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
+  const timer = setTimeout(() => controller.abort(), Number(process.env.AI_TIMEOUT_MS || 180000));
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',

@@ -30,3 +30,16 @@ test('matching does not count a skill that appears only as part of another word'
 
   assert.deepEqual(result.missingSkills, ['Java']);
 });
+
+test('matching recognizes a canonical skill inside an AI-expanded skill name', () => {
+  const result = buildAnalysis({ content: 'I build APIs with Node.js and PostgreSQL.' }, {
+    content: 'Node.js expertise and PostgreSQL database knowledge are required.',
+    extracted_requirements: [
+      { name: 'Node.js expertise', category: 'technical_skills', priority: 'must_have', type: 'skill' },
+      { name: 'PostgreSQL database knowledge', category: 'technical_skills', priority: 'must_have', type: 'skill' }
+    ]
+  });
+
+  assert.equal(result.matchScore, 100);
+  assert.deepEqual(result.matchedSkills, ['Node.js expertise', 'PostgreSQL database knowledge']);
+});

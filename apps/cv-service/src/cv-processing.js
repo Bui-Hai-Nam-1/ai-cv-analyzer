@@ -25,7 +25,9 @@ function emptyCv() {
 }
 
 function cleanString(value) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const cleaned = value.trim();
+  return /^(unknown|not specified|not provided|n\/?a|none|null)$/i.test(cleaned) ? null : cleaned;
 }
 
 function normalizeCv(value) {
@@ -55,7 +57,10 @@ function normalizeCv(value) {
 }
 
 function normalizeStrings(items) {
-  return (Array.isArray(items) ? items : []).map(cleanString).filter(Boolean);
+  const values = Array.isArray(items)
+    ? items
+    : typeof items === 'string' ? items.split(/[,;|]/) : [];
+  return values.map(cleanString).filter(Boolean);
 }
 
 function normalizeItems(items, stringFields, arrayFields = []) {
@@ -144,7 +149,7 @@ async function analyzeWithAi(text) {
   const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeout = setTimeout(() => controller.abort(), Number(process.env.AI_TIMEOUT_MS || 180000));
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',

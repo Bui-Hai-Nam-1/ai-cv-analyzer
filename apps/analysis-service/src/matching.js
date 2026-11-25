@@ -1,4 +1,12 @@
 const categories = ['technical_skills', 'soft_skills', 'experience', 'education', 'language', 'other'];
+const genericSkillWords = new Set([
+  'a', 'an', 'the', 'and', 'or', 'with', 'for', 'from', 'in', 'of', 'to',
+  'required', 'requirement', 'requirements', 'experience', 'expertise', 'expert',
+  'proficiency', 'proficient', 'knowledge', 'understanding', 'strong', 'good',
+  'excellent', 'working', 'familiar', 'familiarity', 'skill', 'skills', 'related',
+  'relevant', 'database', 'development', 'developer', 'framework', 'frameworks',
+  'technology', 'technologies', 'containerization'
+]);
 
 function normalizeText(value) {
   return String(value || '')
@@ -49,7 +57,13 @@ function extractRequirements(content) {
 function requirementMatches(cvText, requirement) {
   const normalizedRequirement = normalizeText(requirement.name);
   if (!normalizedRequirement) return false;
-  return ` ${normalizeText(cvText)} `.includes(` ${normalizedRequirement} `);
+  const normalizedCv = ` ${normalizeText(cvText)} `;
+  if (normalizedCv.includes(` ${normalizedRequirement} `)) return true;
+  if (requirement.type !== 'skill') return false;
+  const keyTerms = normalizedRequirement.split(' ').filter(token => !genericSkillWords.has(token));
+  if (!keyTerms.length) return false;
+  const matchedTerms = keyTerms.filter(token => normalizedCv.includes(` ${token} `)).length;
+  return matchedTerms >= Math.ceil(keyTerms.length / 2);
 }
 
 function buildAnalysis(cv, jd) {

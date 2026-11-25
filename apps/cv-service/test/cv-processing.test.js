@@ -21,10 +21,22 @@ test('heuristic extraction fills contact details and categorized sections', () =
 });
 
 test('normalization returns all public sections and discards malformed values', () => {
-  const result = normalizeCv({ personalInformation: { fullName: '  Jane Doe  ' }, projects: ['Portfolio'] });
+  const result = normalizeCv({
+    personalInformation: { fullName: '  Jane Doe  ' },
+    education: [{ institution: 'Unknown', degree: 'Bachelor' }],
+    technicalSkills: [
+      { category: 'Database', skills: 'PostgreSQL' },
+      { category: 'Development Framework', skills: ['Node.js', '  ', 'Docker'] }
+    ],
+    projects: ['Portfolio']
+  });
 
   assert.equal(result.personalInformation.fullName, 'Jane Doe');
+  assert.equal(result.education[0].institution, null);
+  assert.deepEqual(result.technicalSkills, [
+    { category: 'Database', skills: ['PostgreSQL'] },
+    { category: 'Development Framework', skills: ['Node.js', 'Docker'] }
+  ]);
   assert.deepEqual(result.projects, [{ name: 'Portfolio', description: null, url: null, technologies: [] }]);
   assert.deepEqual(result.languages, []);
-  assert.deepEqual(result.technicalSkills, []);
 });
