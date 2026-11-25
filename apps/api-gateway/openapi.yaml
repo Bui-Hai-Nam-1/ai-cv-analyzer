@@ -1,40 +1,180 @@
 openapi: 3.0.3
 info:
-  title: AI CV Analyzer API Gateway
-  version: 1.0.0
+  title: CareerLens API Gateway
+  version: 1.1.0
+  description: Gateway for CV, JD, and career match analysis APIs.
 servers:
   - url: http://localhost:8080
 paths:
   /health:
     get:
-      summary: Gateway health
+      summary: Check API Gateway
       responses:
-        '200':
-          description: Gateway is healthy
+        '200': { description: Gateway is healthy }
   /api/cvs:
     get:
-      summary: List CVs
+      summary: List CV profiles
       responses:
         '200': { description: CV list }
     post:
-      summary: Create CV
+      summary: Upload PDF/DOCX CV or create CV from JSON text
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                name: { type: string }
+                email: { type: string }
+          application/json:
+            schema:
+              type: object
+              required: [name, content]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                content: { type: string, minLength: 20 }
       responses:
-        '201': { description: CV created }
-        '400': { description: Invalid CV }
+        '201': { description: CV created and analyzed }
+        '400': { description: Invalid CV input }
+        '415': { description: Unsupported file type }
+        '503': { description: CV service unavailable }
+  /api/cvs/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      summary: Get CV profile
+      responses:
+        '200': { description: CV found }
+        '404': { description: CV not found }
+    delete:
+      summary: Delete CV
+      responses:
+        '204': { description: CV deleted }
+        '404': { description: CV not found }
+  /api/cvs/{id}/file:
+    get:
+      summary: Download the original uploaded CV
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Original PDF or DOCX file }
+        '404': { description: CV file not found }
   /api/jds:
     get:
       summary: List job descriptions
       responses:
         '200': { description: JD list }
     post:
-      summary: Create job description
+      summary: Create JD from JSON text or TXT/PDF/DOCX upload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                title: { type: string }
+                company: { type: string }
+                file: { type: string, format: binary }
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title: { type: string }
+                company: { type: string }
+                content: { type: string, minLength: 20 }
       responses:
-        '201': { description: JD created }
-        '400': { description: Invalid JD }
+        '201': { description: JD created with extracted requirements }
+        '400': { description: Invalid JD input }
+        '415': { description: Unsupported file type }
+  /api/jds/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      summary: Get JD and extracted requirements
+      responses:
+        '200': { description: JD found }
+        '404': { description: JD not found }
+    delete:
+      summary: Delete JD
+      responses:
+        '204': { description: JD deleted }
+        '404': { description: JD not found }
   /api/analyses:
-    post:
-      summary: Analyze a CV against a JD
+    get:
+      summary: List analyses
       responses:
-        '201': { description: Analysis created }
+        '200': { description: Analysis list }
+    post:
+      summary: Compare a CV with a JD
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cvId, jdId]
+              properties:
+                cvId: { type: integer, minimum: 1 }
+                jdId: { type: integer, minimum: 1 }
+      responses:
+        '201': { description: Analysis completed }
         '400': { description: Invalid input }
-        '503': { description: Upstream service unavailable }
+        '404': { description: CV or JD not found }
+        '502': { description: AI recommendation failure }
+        '503': { description: Upstream unavailable }
+        '504': { description: Upstream timeout }
+  /api/analyses/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      summary: Get analysis result
+      responses:
+        '200': { description: Analysis found }
+        '404': { description: Analysis not found }
+  /api/analyses/{id}/skill-gaps:
+    get:
+      summary: Get skill gaps and missing requirements
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Skill gap result }
+        '404': { description: Analysis not found }
+  /api/analyses/{id}/recommendations:
+    get:
+      summary: Get career recommendations
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Recommendations }
+        '404': { description: Analysis not found }
+  /api/analysis:
+    post:
+      deprecated: true
+      summary: Alias for POST /api/analyses
+      responses:
+        '201': { description: Analysis completed }

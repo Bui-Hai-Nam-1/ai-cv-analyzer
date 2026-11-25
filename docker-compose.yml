@@ -20,7 +20,7 @@ services:
       - "${CV_SERVICE_PORT:-3001}:3001"
     environment:
       PORT: 3001
-      DATABASE_URL: postgres://cv_user:cv_pass@cv-db:5432/cv_db
+      DATABASE_URL: postgres://${CV_DB_USER:-cv_user}:${CV_DB_PASSWORD:-cv_pass}@cv-db:5432/${CV_DB_NAME:-cv_db}
       UPLOAD_DIR: /app/uploads
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -34,9 +34,14 @@ services:
 
   jd-service:
     build: ./apps/jd-service
+    ports:
+      - "${JD_SERVICE_PORT:-3002}:3002"
     environment:
       PORT: 3002
-      DATABASE_URL: postgres://jd_user:jd_pass@jd-db:5432/jd_db
+      DATABASE_URL: postgres://${JD_DB_USER:-jd_user}:${JD_DB_PASSWORD:-jd_pass}@jd-db:5432/${JD_DB_NAME:-jd_db}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     depends_on:
       jd-db:
         condition: service_healthy
@@ -44,13 +49,18 @@ services:
 
   analysis-service:
     build: ./apps/analysis-service
+    ports:
+      - "${ANALYSIS_SERVICE_PORT:-3003}:3003"
     environment:
       PORT: 3003
-      DATABASE_URL: postgres://analysis_user:analysis_pass@analysis-db:5432/analysis_db
+      DATABASE_URL: postgres://${ANALYSIS_DB_USER:-analysis_user}:${ANALYSIS_DB_PASSWORD:-analysis_pass}@analysis-db:5432/${ANALYSIS_DB_NAME:-analysis_db}
       CV_SERVICE_URL: http://cv-service:3001
       JD_SERVICE_URL: http://jd-service:3002
-      HTTP_TIMEOUT_MS: 2500
-      HTTP_RETRIES: 1
+      HTTP_TIMEOUT_MS: ${HTTP_TIMEOUT_MS:-2500}
+      HTTP_RETRIES: ${HTTP_RETRIES:-1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     depends_on:
       analysis-db:
         condition: service_healthy
@@ -63,13 +73,13 @@ services:
   cv-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: cv_user
-      POSTGRES_PASSWORD: cv_pass
-      POSTGRES_DB: cv_db
+      POSTGRES_USER: ${CV_DB_USER:-cv_user}
+      POSTGRES_PASSWORD: ${CV_DB_PASSWORD:-cv_pass}
+      POSTGRES_DB: ${CV_DB_NAME:-cv_db}
     volumes:
       - cv_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cv_user -d cv_db"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -77,13 +87,13 @@ services:
   jd-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: jd_user
-      POSTGRES_PASSWORD: jd_pass
-      POSTGRES_DB: jd_db
+      POSTGRES_USER: ${JD_DB_USER:-jd_user}
+      POSTGRES_PASSWORD: ${JD_DB_PASSWORD:-jd_pass}
+      POSTGRES_DB: ${JD_DB_NAME:-jd_db}
     volumes:
       - jd_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jd_user -d jd_db"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -91,13 +101,13 @@ services:
   analysis-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: analysis_user
-      POSTGRES_PASSWORD: analysis_pass
-      POSTGRES_DB: analysis_db
+      POSTGRES_USER: ${ANALYSIS_DB_USER:-analysis_user}
+      POSTGRES_PASSWORD: ${ANALYSIS_DB_PASSWORD:-analysis_pass}
+      POSTGRES_DB: ${ANALYSIS_DB_NAME:-analysis_db}
     volumes:
       - analysis_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U analysis_user -d analysis_db"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 3s
       retries: 10

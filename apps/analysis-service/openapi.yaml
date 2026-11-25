@@ -1,18 +1,20 @@
 openapi: 3.0.3
 info:
   title: Analysis Service
-  version: 1.0.0
+  version: 1.1.0
+  description: Compare CV profiles with prioritized job requirements and generate recommendations.
 servers:
   - url: http://localhost:3003
 paths:
   /health:
     get:
+      summary: Check service and database health
       responses:
-        '200': { description: Service healthy }
-        '503': { description: Database unavailable }
+        '200': { description: Service and database are healthy }
+        '503': { description: Database is unavailable }
   /analyses:
     post:
-      summary: Analyze CV against JD
+      summary: Analyze a CV against a JD
       requestBody:
         required: true
         content:
@@ -24,37 +26,45 @@ paths:
                 cvId: { type: integer, minimum: 1 }
                 jdId: { type: integer, minimum: 1 }
       responses:
-        '201': { description: Analysis completed }
+        '201':
+          description: Analysis completed and stored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalysisRecord' }
         '400': { description: Invalid input }
-        '404': { description: Related resource not found }
-        '503': { description: Upstream unavailable }
-        '504': { description: Upstream timeout }
+        '404': { description: Related CV or JD not found }
+        '502': { description: AI recommendation provider failed }
+        '503': { description: Upstream service unavailable }
+        '504': { description: Upstream service timed out }
     get:
       summary: List analyses
       responses:
         '200': { description: Analysis list }
   /analyses/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
     get:
       summary: Get analysis
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
       responses:
         '200': { description: Analysis found }
-        '404': { description: Not found }
+        '400': { description: Invalid analysis identifier }
+        '404': { description: Analysis not found }
   /analyses/{id}/skill-gaps:
     get:
-      summary: Get missing skills
+      summary: Get missing skills and requirements
       parameters:
         - in: path
           name: id
           required: true
-          schema: { type: integer }
+          schema: { type: integer, minimum: 1 }
       responses:
         '200': { description: Skill gaps }
-        '409': { description: Analysis not completed }
+        '400': { description: Invalid analysis identifier }
+        '404': { description: Analysis not found }
+        '409': { description: Analysis is not completed }
   /analyses/{id}/recommendations:
     get:
       summary: Get recommendations
@@ -62,7 +72,32 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: integer }
+          schema: { type: integer, minimum: 1 }
       responses:
         '200': { description: Recommendations }
-        '409': { description: Analysis not completed }
+        '400': { description: Invalid analysis identifier }
+        '404': { description: Analysis not found }
+        '409': { description: Analysis is not completed }
+components:
+  schemas:
+    AnalysisRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        cv_id: { type: integer }
+        jd_id: { type: integer }
+        status: { type: string, enum: [PENDING, COMPLETED, FAILED] }
+        result:
+          type: object
+          properties:
+            matchScore: { type: integer, minimum: 0, maximum: 100 }
+            matchedSkills: { type: array, items: { type: string } }
+            missingSkills: { type: array, items: { type: string } }
+            matchedRequirements: { type: array, items: { type: object } }
+            missingRequirements: { type: array, items: { type: object } }
+            recommendations: { type: array, items: { type: string } }
+            recommendationProvider: { type: string }
+            breakdown: { type: object }
+        error: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }

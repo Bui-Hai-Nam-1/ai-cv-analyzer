@@ -1,6 +1,6 @@
-# AI CV Analyzer — Microservices Starter
+# AI CV Analyzer — CareerLens
 
-Bộ khung khởi tạo cho đồ án Microservices bằng Node.js + Express.
+Ứng dụng microservices hỗ trợ lưu CV/JD, trích xuất dữ liệu có cấu trúc và phân tích độ phù hợp giữa hồ sơ ứng viên với vị trí công việc.
 
 ## Kiến trúc
 
@@ -9,23 +9,40 @@ Bộ khung khởi tạo cho đồ án Microservices bằng Node.js + Express.
 - `jd-service`: quản lý Job Description, PostgreSQL riêng.
 - `analysis-service`: lấy dữ liệu CV + JD, tính Match Score, Skill Gap và lưu kết quả; PostgreSQL riêng.
 
-Mỗi service có source code, Dockerfile, OpenAPI và `GET /health`.
+Mỗi service có source code, Dockerfile, OpenAPI và `GET /health`. Giao diện web được phục vụ từ API Gateway.
 
 ## Chạy toàn hệ thống
 
 1. Cài Docker Desktop (hoặc Docker Engine + Compose).
-2. Copy `.env.example` thành `.env` nếu muốn chỉnh cấu hình.
+2. Tạo `.env` từ `.env.example` nếu chưa có file cấu hình.
 3. Tại thư mục gốc, chạy:
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
-Gateway: http://localhost:8080  
+Web app và API Gateway: http://localhost:8080
+
 Health: http://localhost:8080/health
 
-Dừng: `docker compose down`  
-Dừng và xóa cả dữ liệu DB: `docker compose down -v`
+CV Service: http://localhost:3001
+
+JD Service: http://localhost:3002
+
+Analysis Service: http://localhost:3003
+
+Dừng nhưng giữ dữ liệu: `docker compose down`
+
+Dừng và xóa cả dữ liệu DB/uploads: `docker compose down -v` (xóa dữ liệu không thể khôi phục)
+
+## Luồng sử dụng
+
+1. Mở giao diện tại `http://localhost:8080`.
+2. Tải CV PDF/DOCX lên trong **Hồ sơ CV**.
+3. Dán nội dung JD hoặc tải file TXT/PDF/DOCX trong **Mô tả công việc**.
+4. Vào **Phân tích phù hợp**, chọn CV và JD để xem match score, kỹ năng đáp ứng/còn thiếu và khuyến nghị.
+
+OpenAI-compatible AI extraction/recommendations được bật khi cấu hình `OPENAI_API_KEY` trong `.env`. Nếu để trống, service dùng heuristic/rule-based extraction và ghi rõ nguồn trong dữ liệu trả về. Khi bật AI, nội dung CV/JD sẽ được gửi tới provider cấu hình; cần có thông báo và sự đồng ý phù hợp.
 
 ## API chính
 
@@ -90,7 +107,7 @@ curl -X POST http://localhost:8080/api/analyses \
   -d '{"cvId":1,"jdId":1}'
 ```
 
-> Matching hiện tại là bản MVP minh họa dựa trên từ khóa. Chưa tích hợp AI/LLM thật. Nhóm có thể thay phần `buildAnalysis()` trong `analysis-service/src/server.js` bằng logic NLP/AI sau.
+Match score hiện tính trên các yêu cầu được trích xuất; yêu cầu `must_have` có trọng số cao gấp đôi `nice_to_have`. Không có API key, đề xuất dùng rule-based; khi bật AI, AI tạo khuyến nghị dựa trên khoảng trống đã được xác định.
 
 ## Quy ước nhóm
 

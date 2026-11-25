@@ -109,6 +109,26 @@ paths:
           description: Invalid CV identifier
         '404':
           description: CV not found
+  /cvs/{id}/file:
+    get:
+      summary: Download the original uploaded CV file
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Original PDF or DOCX file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema: { type: string, format: binary }
+        '404':
+          description: CV or its original file was not found
 components:
   schemas:
     Cv:

@@ -159,6 +159,26 @@ app.get('/cvs/:id', async (req, res) => {
   }
 });
 
+app.get('/cvs/:id/file', async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ error: 'INVALID_CV_ID' });
+  try {
+    const result = await pool.query('SELECT file_path, file_name FROM cvs WHERE id=$1', [req.params.id]);
+    if (!result.rowCount) return res.status(404).json({ error: 'CV_NOT_FOUND' });
+    const cvFile = result.rows[0];
+    if (!cvFile.file_path) return res.status(404).json({ error: 'CV_FILE_NOT_FOUND', message: 'CV này được tạo từ văn bản, không có file gốc.' });
+    try {
+      await fs.access(cvFile.file_path);
+    } catch (error) {
+      if (error.code === 'ENOENT') return res.status(404).json({ error: 'CV_FILE_NOT_FOUND' });
+      throw error;
+    }
+    return res.download(cvFile.file_path, cvFile.file_name || `cv-${req.params.id}`);
+  } catch (error) {
+    console.error('CV file download failed:', error.message);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 app.delete('/cvs/:id', async (req, res) => {
   if (!validId(req.params.id)) return res.status(400).json({ error: 'INVALID_CV_ID' });
   let client;
