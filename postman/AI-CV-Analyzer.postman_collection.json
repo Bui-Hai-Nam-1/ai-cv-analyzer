@@ -14,7 +14,11 @@
     },
     {
       "key": "cvId",
-      "value": "1"
+      "value": ""
+    },
+    {
+      "key": "jsonCvId",
+      "value": ""
     },
     {
       "key": "jdServiceUrl",
@@ -26,11 +30,15 @@
     },
     {
       "key": "jdId",
-      "value": "1"
+      "value": ""
+    },
+    {
+      "key": "jsonJdId",
+      "value": ""
     },
     {
       "key": "analysisId",
-      "value": "1"
+      "value": ""
     }
   ],
   "item": [
@@ -39,28 +47,72 @@
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/health"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Gateway health is ok', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('ok'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "CV Service health",
       "request": {
         "method": "GET",
         "url": "{{cvServiceUrl}}/health"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CV Service and database are healthy', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().database).to.eql('ok'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "JD Service health",
       "request": {
         "method": "GET",
         "url": "{{jdServiceUrl}}/health"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('JD Service and database are healthy', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().database).to.eql('ok'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Analysis Service health",
       "request": {
         "method": "GET",
         "url": "{{analysisServiceUrl}}/health"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Analysis Service and database are healthy', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().database).to.eql('ok'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Create CV - success",
@@ -85,7 +137,11 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('CV is created', function () { pm.response.to.have.status(201); });",
-              "if (pm.response.code === 201) pm.collectionVariables.set('cvId', pm.response.json().id);"
+              "if (pm.response.code === 201) {",
+              "  const cv = pm.response.json();",
+              "  pm.collectionVariables.set('jsonCvId', cv.id);",
+              "  pm.test('JSON CV includes extracted profile data', function () { pm.expect(cv.parsed_data).to.have.property('technicalSkills'); pm.expect(cv.analysis_provider).to.be.a('string'); });",
+              "}"
             ]
           }
         }
@@ -101,7 +157,7 @@
             {
               "key": "file",
               "type": "file",
-              "src": []
+              "src": "fixtures/sample-cv.docx"
             },
             {
               "key": "name",
@@ -124,7 +180,11 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('CV file is uploaded', function () { pm.response.to.have.status(201); });",
-              "if (pm.response.code === 201) pm.collectionVariables.set('cvId', pm.response.json().id);"
+              "if (pm.response.code === 201) {",
+              "  const cv = pm.response.json();",
+              "  pm.collectionVariables.set('cvId', cv.id);",
+              "  pm.test('DOCX CV has extracted text and structured data', function () { pm.expect(cv.file_name).to.eql('sample-cv.docx'); pm.expect(cv.content.length).to.be.above(20); pm.expect(cv.parsed_data).to.have.property('experience'); });",
+              "}"
             ]
           }
         }
@@ -135,14 +195,36 @@
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/cvs"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CV list contains uploaded CV', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().some(function (cv) { return Number(cv.id) === Number(pm.collectionVariables.get('cvId')); })).to.eql(true); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Get CV by ID",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/cvs/{{cvId}}"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Get CV returns extracted profile', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().parsed_data).to.have.property('personalInformation'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Create CV - business error",
@@ -159,7 +241,36 @@
           "raw": "{\"name\": \"A\", \"content\": \"too short\"}"
         },
         "url": "{{baseUrl}}/api/cvs"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Invalid CV is rejected', function () { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('INVALID_CV'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete JSON CV test record",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/cvs/{{jsonCvId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('JSON CV test record is deleted', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Create JD - success",
@@ -184,7 +295,11 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('JD is created', function () { pm.response.to.have.status(201); });",
-              "if (pm.response.code === 201) pm.collectionVariables.set('jdId', pm.response.json().id);"
+              "if (pm.response.code === 201) {",
+              "  const jd = pm.response.json();",
+              "  pm.collectionVariables.set('jsonJdId', jd.id);",
+              "  pm.test('JD includes categorized requirements', function () { pm.expect(jd.extracted_requirements).to.be.an('array').that.is.not.empty; pm.expect(jd.extracted_requirements[0]).to.have.property('priority'); });",
+              "}"
             ]
           }
         }
@@ -210,7 +325,7 @@
             {
               "key": "file",
               "type": "file",
-              "src": []
+              "src": "fixtures/sample-jd.txt"
             }
           ]
         },
@@ -223,7 +338,11 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('JD file is uploaded', function () { pm.response.to.have.status(201); });",
-              "if (pm.response.code === 201) pm.collectionVariables.set('jdId', pm.response.json().id);"
+              "if (pm.response.code === 201) {",
+              "  const jd = pm.response.json();",
+              "  pm.collectionVariables.set('jdId', jd.id);",
+              "  pm.test('TXT JD contains extracted priorities', function () { pm.expect(jd.file_name).to.eql('sample-jd.txt'); pm.expect(jd.extracted_requirements).to.be.an('array').that.is.not.empty; pm.expect(jd.extracted_requirements.some(function (item) { return item.priority === 'nice_to_have'; })).to.eql(true); });",
+              "}"
             ]
           }
         }
@@ -234,14 +353,54 @@
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/jds"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('JD list contains uploaded JD', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().some(function (jd) { return Number(jd.id) === Number(pm.collectionVariables.get('jdId')); })).to.eql(true); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Get JD by ID",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/jds/{{jdId}}"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Get JD returns extracted requirements', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().extracted_requirements).to.be.an('array').that.is.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete JSON JD test record",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/jds/{{jsonJdId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('JSON JD test record is deleted', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Create analysis",
@@ -266,7 +425,11 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('Analysis is created', function () { pm.response.to.have.status(201); });",
-              "if (pm.response.code === 201) pm.collectionVariables.set('analysisId', pm.response.json().id);"
+              "if (pm.response.code === 201) {",
+              "  const analysis = pm.response.json();",
+              "  pm.collectionVariables.set('analysisId', analysis.id);",
+              "  pm.test('Analysis is completed with a bounded match score', function () { pm.expect(analysis.status).to.eql('COMPLETED'); pm.expect(analysis.result.matchScore).to.be.within(0, 100); });",
+              "}"
             ]
           }
         }
@@ -277,21 +440,54 @@
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/analyses/{{analysisId}}"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Get analysis returns completed result', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('COMPLETED'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Get skill gaps",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/analyses/{{analysisId}}/skill-gaps"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Skill gaps endpoint returns a list', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().missingSkills).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Get recommendations",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/analyses/{{analysisId}}/recommendations"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Recommendations endpoint returns a list', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().recommendations).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Analysis invalid input",
@@ -308,7 +504,18 @@
           "raw": "{\"cvId\": -1, \"jdId\": \"abc\"}"
         },
         "url": "{{baseUrl}}/api/analyses"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Invalid analysis input is rejected', function () { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('INVALID_ANALYSIS_INPUT'); });"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Delete JD by ID",

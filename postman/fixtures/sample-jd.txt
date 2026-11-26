@@ -1,0 +1,14 @@
+Backend Developer
+
+Must-have technical skills:
+- Node.js backend development
+- PostgreSQL database
+- Docker containerization
+- REST API design
+
+Nice-to-have:
+- English communication
+- Kubernetes
+
+Experience:
+- Two years building backend applications
