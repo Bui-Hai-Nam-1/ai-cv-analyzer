@@ -295,8 +295,15 @@ function renderAnalysis(record) {
   $('#analysis-result').innerHTML = `
     <article class="score-panel">
       <div class="score-ring" style="--score:${score}"><div class="score-inner"><span class="score-number">${score}<small>%</small></span><span class="score-caption">ĐỘ PHÙ HỢP</span></div></div>
-      <h2 class="score-title">${score >= 75 ? 'Rất có tiềm năng' : score >= 50 ? 'Đang trên đà phù hợp' : 'Cơ hội để phát triển'}</h2>
-      <p class="score-subtitle">${escapeHtml(cv?.name || `CV #${record.cv_id}`)} · ${escapeHtml(jd?.title || `JD #${record.jd_id}`)}</p>
+      <div class="score-summary">
+        <h2 class="score-title">${score >= 75 ? 'Rất có tiềm năng' : score >= 50 ? 'Đang trên đà phù hợp' : 'Cơ hội để phát triển'}</h2>
+        <p class="score-subtitle">${escapeHtml(cv?.name || `CV #${record.cv_id}`)} · ${escapeHtml(jd?.title || `JD #${record.jd_id}`)}</p>
+      </div>
+      <div class="score-metrics">
+        <div class="score-metric"><strong>${matched.length}</strong><span>Đã đáp ứng</span></div>
+        <div class="score-metric"><strong>${missing.length}</strong><span>Còn thiếu</span></div>
+        <div class="score-metric"><strong>${result.mustHaveScore ?? 0}%</strong><span>Yêu cầu bắt buộc</span></div>
+      </div>
     </article>
     <article class="result-panel comparison-panel">
       <h3>Đối chiếu yêu cầu</h3><p class="result-caption">${matched.length} phù hợp · ${missing.length} cần bổ sung</p>
@@ -388,6 +395,17 @@ function showChosenFile(input, display, allowedExtensions) {
 }
 
 document.addEventListener('click', async event => {
+  const openDialog = event.target.closest('[data-open-dialog]');
+  if (openDialog) {
+    const dialog = document.getElementById(openDialog.dataset.openDialog);
+    if (dialog && !dialog.open) dialog.showModal();
+    return;
+  }
+  const closeDialog = event.target.closest('[data-close-dialog]');
+  if (closeDialog) {
+    document.getElementById(closeDialog.dataset.closeDialog)?.close();
+    return;
+  }
   const viewLink = event.target.closest('[data-view-link]');
   if (viewLink) {
     event.preventDefault();
@@ -406,6 +424,7 @@ document.addEventListener('click', async event => {
     if (details) {
       const opening = details.hidden;
       details.hidden = !opening;
+      details.closest('.record-card')?.classList.toggle('expanded', opening);
       if (opening) {
         details.querySelectorAll('iframe[data-src]').forEach(frame => {
           frame.src = frame.dataset.src;
@@ -515,6 +534,7 @@ $('#cv-form').addEventListener('submit', async event => {
   if ($('#cv-name').value.trim()) formData.append('name', $('#cv-name').value.trim());
   if ($('#cv-email').value.trim()) formData.append('email', $('#cv-email').value.trim());
   setBusy(button, true, 'Đang tải lên và phân tích…');
+  form.closest('dialog')?.close();
   setProcessing(true, 'cv');
   try {
     const cv = await request('/api/cvs', { method: 'POST', body: formData });
@@ -568,6 +588,7 @@ $('#jd-form').addEventListener('submit', async event => {
     options.body = JSON.stringify({ title, company, content });
   }
   setBusy(button, true, 'Đang lưu và phân tích…');
+  form.closest('dialog')?.close();
   setProcessing(true, 'jd');
   try {
     const jd = await request('/api/jds', options);

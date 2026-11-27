@@ -68,55 +68,19 @@
         </section>
 
         <section class="view" id="view-cvs">
-          <div class="page-intro"><div><p class="eyebrow">HỒ SƠ CÁ NHÂN</p><h1>Thư viện CV</h1><p class="subheading">Tải hồ sơ lên và để CareerLens nhận diện thông tin, kinh nghiệm cùng kỹ năng của bạn.</p></div><span class="intro-icon lavender">▤</span></div>
-          <div class="content-grid">
-            <article class="panel form-panel">
-              <div class="panel-heading"><div><span class="panel-step">BƯỚC 01</span><h2>Thêm hồ sơ CV</h2></div><span class="panel-icon">↥</span></div>
-              <form id="cv-form">
-                <label class="field-label" for="cv-name">Tên hồ sơ <span class="optional">(không bắt buộc)</span></label>
-                <input class="text-input" id="cv-name" name="name" maxlength="160" placeholder="Ví dụ: CV Backend Developer">
-                <label class="field-label" for="cv-email">Email <span class="optional">(không bắt buộc)</span></label>
-                <input class="text-input" id="cv-email" name="email" type="email" maxlength="254" placeholder="ban@email.com">
-                <label class="field-label">Tệp CV <span class="required">*</span></label>
-                <label class="dropzone" for="cv-file" id="cv-dropzone">
-                  <input id="cv-file" name="file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
-                  <span class="upload-icon">↑</span><strong>Kéo thả CV vào đây</strong><span>hoặc <u>chọn tệp từ thiết bị</u></span><small>PDF hoặc DOCX · Tối đa 10 MB</small>
-                  <span class="file-selected" id="cv-file-name"></span>
-                </label>
-                <p class="form-note"><span>✦</span> Hệ thống trích xuất văn bản tự động. File được lưu riêng tư trong hệ thống.</p>
-                <button class="button button-primary button-wide" type="submit"><span>↥</span> Tải lên và phân tích <span class="button-arrow">→</span></button>
-              </form>
-            </article>
-            <article class="panel library-panel">
-              <div class="panel-heading"><div><span class="panel-step">HỒ SƠ ĐÃ LƯU</span><h2>CV của bạn <span class="count-pill" id="cv-list-count">0</span></h2></div><button class="icon-button" data-refresh aria-label="Tải lại">↻</button></div>
-              <div class="record-list" id="cv-list"><div class="empty-state">Chưa có CV nào.<br><span>Tải lên CV đầu tiên để bắt đầu.</span></div></div>
-            </article>
-          </div>
+          <div class="page-intro"><div><p class="eyebrow">HỒ SƠ CÁ NHÂN</p><h1>Thư viện CV</h1><p class="subheading">Tải hồ sơ lên và để CareerLens nhận diện thông tin, kinh nghiệm cùng kỹ năng của bạn.</p></div><button type="button" class="button button-primary" data-open-dialog="cv-dialog"><span>＋</span> Thêm hồ sơ CV</button></div>
+          <article class="panel library-panel">
+            <div class="panel-heading"><div><span class="panel-step">HỒ SƠ ĐÃ LƯU</span><h2>CV của bạn <span class="count-pill" id="cv-list-count">0</span></h2></div><button class="icon-button" data-refresh aria-label="Tải lại">↻</button></div>
+            <div class="record-list" id="cv-list"><div class="empty-state">Chưa có CV nào.<br><span>Tải lên CV đầu tiên để bắt đầu.</span></div></div>
+          </article>
         </section>
 
         <section class="view" id="view-jds">
-          <div class="page-intro"><div><p class="eyebrow">CƠ HỘI TIẾP THEO</p><h1>Vị trí công việc</h1><p class="subheading">Lưu JD mục tiêu để hiểu yêu cầu và so sánh với kỹ năng trong CV.</p></div><span class="intro-icon peach">▧</span></div>
-          <div class="content-grid">
-            <article class="panel form-panel">
-              <div class="panel-heading"><div><span class="panel-step">BƯỚC 02</span><h2>Thêm mô tả công việc</h2></div><span class="panel-icon">✦</span></div>
-              <form id="jd-form">
-                <label class="field-label" for="jd-title">Tên vị trí <span class="required">*</span></label>
-                <input class="text-input" id="jd-title" name="title" maxlength="160" placeholder="Ví dụ: Backend Developer">
-                <label class="field-label" for="jd-company">Công ty <span class="optional">(không bắt buộc)</span></label>
-                <input class="text-input" id="jd-company" name="company" maxlength="160" placeholder="Tên công ty">
-                <div class="field-label">Nguồn mô tả công việc <span class="required">*</span></div>
-                <div class="segmented-control"><button class="segment active" type="button" data-jd-mode="text">Dán nội dung</button><button class="segment" type="button" data-jd-mode="file">Tải tệp lên</button></div>
-                <div id="jd-text-mode"><label class="sr-only" for="jd-content">Nội dung công việc</label><textarea class="text-input textarea" id="jd-content" name="content" rows="8" placeholder="Dán mô tả công việc, trách nhiệm và yêu cầu tại đây..."></textarea><div class="character-count"><span id="jd-char-count">0</span> ký tự · tối thiểu 20</div></div>
-                <div id="jd-file-mode" hidden><label class="dropzone compact-dropzone" for="jd-file"><input id="jd-file" name="file" type="file" accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"><span class="upload-icon">↑</span><strong>Chọn tệp mô tả công việc</strong><small>TXT, PDF hoặc DOCX · Tối đa 10 MB</small><span class="file-selected" id="jd-file-name"></span></label></div>
-                <p class="form-note"><span>✦</span> Yêu cầu sẽ được phân loại theo kỹ năng, kinh nghiệm, học vấn và ngôn ngữ.</p>
-                <button class="button button-primary button-wide" type="submit"><span>＋</span> Lưu và phân tích JD <span class="button-arrow">→</span></button>
-              </form>
-            </article>
-            <article class="panel library-panel">
-              <div class="panel-heading"><div><span class="panel-step">ĐANG THEO DÕI</span><h2>Vị trí đã lưu <span class="count-pill" id="jd-list-count">0</span></h2></div><button class="icon-button" data-refresh aria-label="Tải lại">↻</button></div>
-              <div class="record-list" id="jd-list"><div class="empty-state">Chưa có JD nào.<br><span>Lưu vị trí bạn muốn ứng tuyển.</span></div></div>
-            </article>
-          </div>
+          <div class="page-intro"><div><p class="eyebrow">CƠ HỘI TIẾP THEO</p><h1>Vị trí công việc</h1><p class="subheading">Lưu JD mục tiêu để hiểu yêu cầu và so sánh với kỹ năng trong CV.</p></div><button type="button" class="button button-primary" data-open-dialog="jd-dialog"><span>＋</span> Thêm mô tả công việc</button></div>
+          <article class="panel library-panel">
+            <div class="panel-heading"><div><span class="panel-step">ĐANG THEO DÕI</span><h2>Vị trí đã lưu <span class="count-pill" id="jd-list-count">0</span></h2></div><button class="icon-button" data-refresh aria-label="Tải lại">↻</button></div>
+            <div class="record-list" id="jd-list"><div class="empty-state">Chưa có JD nào.<br><span>Lưu vị trí bạn muốn ứng tuyển.</span></div></div>
+          </article>
         </section>
 
         <section class="view" id="view-analysis">
@@ -138,6 +102,44 @@
       <footer class="footer"><span>CareerLens <span class="footer-dot">·</span> AI CV Analyzer</span><span>Built for your next chapter <span class="footer-heart">✦</span></span></footer>
     </main>
   </div>
+
+  <dialog class="entry-dialog" id="cv-dialog" aria-labelledby="cv-dialog-title">
+    <article class="panel form-panel dialog-panel">
+      <div class="panel-heading"><div><span class="panel-step">BƯỚC 01</span><h2 id="cv-dialog-title">Thêm hồ sơ CV</h2></div><button type="button" class="icon-button dialog-close" data-close-dialog="cv-dialog" aria-label="Đóng">×</button></div>
+      <form id="cv-form">
+        <label class="field-label" for="cv-name">Tên hồ sơ <span class="optional">(không bắt buộc)</span></label>
+        <input class="text-input" id="cv-name" name="name" maxlength="160" placeholder="Ví dụ: CV Backend Developer">
+        <label class="field-label" for="cv-email">Email <span class="optional">(không bắt buộc)</span></label>
+        <input class="text-input" id="cv-email" name="email" type="email" maxlength="254" placeholder="ban@email.com">
+        <label class="field-label">Tệp CV <span class="required">*</span></label>
+        <label class="dropzone" for="cv-file" id="cv-dropzone">
+          <input id="cv-file" name="file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+          <span class="upload-icon">↑</span><strong>Kéo thả CV vào đây</strong><span>hoặc <u>chọn tệp từ thiết bị</u></span><small>PDF hoặc DOCX · Tối đa 10 MB</small>
+          <span class="file-selected" id="cv-file-name"></span>
+        </label>
+        <p class="form-note"><span>✦</span> Hệ thống trích xuất văn bản tự động. File được lưu riêng tư trong hệ thống.</p>
+        <div class="form-actions"><button class="button button-primary" type="submit"><span>↥</span> Tải lên và phân tích <span class="button-arrow">→</span></button><button class="button button-secondary" type="button" data-close-dialog="cv-dialog">Hủy</button></div>
+      </form>
+    </article>
+  </dialog>
+
+  <dialog class="entry-dialog" id="jd-dialog" aria-labelledby="jd-dialog-title">
+    <article class="panel form-panel dialog-panel">
+      <div class="panel-heading"><div><span class="panel-step">BƯỚC 02</span><h2 id="jd-dialog-title">Thêm mô tả công việc</h2></div><button type="button" class="icon-button dialog-close" data-close-dialog="jd-dialog" aria-label="Đóng">×</button></div>
+      <form id="jd-form">
+        <label class="field-label" for="jd-title">Tên vị trí <span class="required">*</span></label>
+        <input class="text-input" id="jd-title" name="title" maxlength="160" placeholder="Ví dụ: Backend Developer">
+        <label class="field-label" for="jd-company">Công ty <span class="optional">(không bắt buộc)</span></label>
+        <input class="text-input" id="jd-company" name="company" maxlength="160" placeholder="Tên công ty">
+        <div class="field-label">Nguồn mô tả công việc <span class="required">*</span></div>
+        <div class="segmented-control"><button class="segment active" type="button" data-jd-mode="text">Dán nội dung</button><button class="segment" type="button" data-jd-mode="file">Tải tệp lên</button></div>
+        <div id="jd-text-mode"><label class="sr-only" for="jd-content">Nội dung công việc</label><textarea class="text-input textarea" id="jd-content" name="content" rows="8" placeholder="Dán mô tả công việc, trách nhiệm và yêu cầu tại đây..."></textarea><div class="character-count"><span id="jd-char-count">0</span> ký tự · tối thiểu 20</div></div>
+        <div id="jd-file-mode" hidden><label class="dropzone compact-dropzone" for="jd-file"><input id="jd-file" name="file" type="file" accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"><span class="upload-icon">↑</span><strong>Chọn tệp mô tả công việc</strong><small>TXT, PDF hoặc DOCX · Tối đa 10 MB</small><span class="file-selected" id="jd-file-name"></span></label></div>
+        <p class="form-note"><span>✦</span> Yêu cầu sẽ được phân loại theo kỹ năng, kinh nghiệm, học vấn và ngôn ngữ.</p>
+        <div class="form-actions"><button class="button button-primary" type="submit"><span>＋</span> Lưu và phân tích JD <span class="button-arrow">→</span></button><button class="button button-secondary" type="button" data-close-dialog="jd-dialog">Hủy</button></div>
+      </form>
+    </article>
+  </dialog>
   <div class="cv-processing-overlay" id="cv-processing-overlay" role="status" aria-live="polite" aria-busy="true" hidden>
     <div class="cv-processing-card">
       <strong id="cv-progress-title">AI đang đọc CV</strong>
