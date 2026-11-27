@@ -135,6 +135,7 @@ function renderCvs() {
     const isPdf = cv.file_name?.toLowerCase().endsWith('.pdf');
     const certifications = profile.certifications || [];
     const awards = profile.awards || [];
+    const experienceCount = (profile.experience || []).length;
     const details = [
       cv.email ? `<div><strong>Email:</strong> ${escapeHtml(cv.email)}</div>` : '',
       cv.file_name ? `<div><strong>Tệp:</strong> ${escapeHtml(cv.file_name)}</div>` : '',
@@ -154,6 +155,7 @@ function renderCvs() {
       <div class="record-top">
         <span class="record-icon">▤</span>
         <div class="record-title"><strong>${escapeHtml(cv.name || 'CV chưa đặt tên')}</strong><small>${escapeHtml(formatDate(cv.created_at))}${cv.personalInformation?.fullName ? ` · ${escapeHtml(cv.personalInformation.fullName)}` : ''}</small></div>
+        <div class="record-summary"><span><strong>${skills.length}</strong>Kỹ năng</span><span><strong>${experienceCount}</strong>Kinh nghiệm</span><span><strong>${certifications.length}</strong>Chứng chỉ</span></div>
         <div class="record-actions"><button type="button" data-action="cv-details" data-id="${escapeHtml(cv.id)}">Chi tiết</button><button type="button" class="delete-button" data-action="delete-cv" data-id="${escapeHtml(cv.id)}" aria-label="Xóa CV">Xóa</button></div>
       </div>
       <div class="record-details" data-details="${escapeHtml(cv.id)}" hidden>${details || '<span>Chưa có thông tin trích xuất.</span>'}</div>
@@ -175,8 +177,9 @@ function renderJds() {
       items: requirements.filter(item => item.category === category)
     })).filter(group => group.items.length);
     const mustHaveCount = requirements.filter(item => item.priority !== 'nice_to_have').length;
+    const niceToHaveCount = requirements.length - mustHaveCount;
     const groupedRequirements = groups.map(group => `
-      <section class="jd-requirement-group">
+      <section class="jd-requirement-group jd-requirement-group-${escapeHtml(group.category)}">
         <div class="jd-requirement-heading"><strong>${escapeHtml(labels[group.category] || group.category)}</strong><span>${group.items.length} yêu cầu</span></div>
         ${group.items.map(item => `<div class="jd-requirement-item">
           <strong>${escapeHtml(item.name)}</strong>
@@ -188,6 +191,7 @@ function renderJds() {
       <div class="record-top">
         <span class="record-icon jd">▧</span>
         <div class="record-title"><strong>${escapeHtml(jd.title)}</strong><small>${escapeHtml(jd.company || 'Chưa có tên công ty')} · ${escapeHtml(formatDate(jd.created_at))}</small></div>
+        <div class="record-summary"><span><strong>${requirements.length}</strong>Yêu cầu</span><span><strong>${mustHaveCount}</strong>Bắt buộc</span><span><strong>${niceToHaveCount}</strong>Ưu tiên</span></div>
         <div class="record-actions"><button type="button" data-action="jd-details" data-id="${escapeHtml(jd.id)}">Chi tiết</button><button type="button" class="delete-button" data-action="delete-jd" data-id="${escapeHtml(jd.id)}" aria-label="Xóa JD">Xóa</button></div>
       </div>
       <div class="record-details" data-details="${escapeHtml(jd.id)}" hidden>
