@@ -1,6 +1,12 @@
 const express = require('express');
 const { Pool } = require('pg');
-const { buildAnalysis } = require('./matching');
+const {
+  buildAnalysis,
+  buildMoreRecommendations,
+  buildRuleBasedRecommendations,
+  learningResources,
+  normalizeText
+} = require('./matching');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -10,6 +16,17 @@ const timeoutMs = Number(process.env.HTTP_TIMEOUT_MS || 2500);
 const retries = Number(process.env.HTTP_RETRIES || 1);
 const cvBase = process.env.CV_SERVICE_URL || 'http://localhost:3001';
 const jdBase = process.env.JD_SERVICE_URL || 'http://localhost:3002';
+
+function containsVietnamese(value) {
+  return /[\u00c0-\u024f\u1e00-\u1eff]/i.test(String(value || ''));
+}
+
+function localizeDuration(value) {
+  const match = String(value || '').match(/^\s*(\d+)(?:\s*[-–]\s*(\d+))?\s*(day|week|month)s?\s*$/i);
+  if (!match) return null;
+  const unit = { day: 'ngày', week: 'tuần', month: 'tháng' }[match[3].toLowerCase()];
+  return `${match[1]}${match[2] ? `–${match[2]}` : ''} ${unit} (ước tính)`;
+}
 
 async function init() {
   await pool.query(`CREATE TABLE IF NOT EXISTS analyses (
@@ -46,10 +63,13 @@ async function getWithRetry(url) {
   throw error;
 }
 
-async function createAiRecommendations(result, cv, jd) {
+async function createAiRecommendations(result, jd, existingRecommendations = [], additional = false) {
   const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Number(process.env.AI_TIMEOUT_MS || 180000));
+  const missingRequirements = result.missingRequirements.slice(0, 20);
+  const gapsByName = new Map(missingRequirements.map(item => [normalizeText(item.name), item]));
+  const existingTitles = existingRecommendations.map(item => typeof item === 'string' ? item : item?.title).filter(Boolean);
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -57,19 +77,22 @@ async function createAiRecommendations(result, cv, jd) {
       signal: controller.signal,
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-        temperature: 0.3,
+        temperature: additional ? 0.65 : 0.3,
         response_format: { type: 'json_object' },
         messages: [
           {
             role: 'system',
-            content: 'Give concise, actionable, truthful career recommendations using only the supplied CV and missing job requirements. Do not claim the candidate has experience not shown in the CV. Return JSON: {"recommendations":["..."]}.'
+            content: 'Bạn là cố vấn học tập nghề nghiệp. Viết TOÀN BỘ title, action và duration bằng tiếng Việt tự nhiên; giữ nguyên tên công nghệ bằng tiếng Anh. Chỉ đề xuất lộ trình học và bài tập thực hành thực tế cho các yêu cầu còn thiếu được cung cấp. Không khẳng định ứng viên đã biết kỹ năng đó. Tuyệt đối không bịa tên khóa học, tổ chức, chứng chỉ, nhà cung cấp hoặc URL cụ thể; link khóa học/video sẽ được hệ thống bổ sung riêng. Đưa ra bước học cụ thể và sản phẩm có thể đưa vào portfolio. Mỗi mục phải gắn với đúng một requirement trong danh sách. duration là ước tính thận trọng dạng "2-4 weeks" hoặc null. Chỉ trả JSON theo mẫu: {"recommendations":[{"requirement":"tên yêu cầu","title":"tiêu đề tiếng Việt","action":"các bước thực hiện bằng tiếng Việt","duration":"2-4 weeks hoặc null"}]}.'
           },
           {
             role: 'user',
             content: JSON.stringify({
-              cv: cv.parsed_data || cv.content,
+              request: additional
+                ? 'Generate up to five additional, meaningfully different suggestions. Avoid every existing title; prefer uncovered gaps and otherwise propose a different way to learn or demonstrate a listed gap.'
+                : 'Generate one useful recommendation for each listed gap.',
               jobTitle: jd.title,
-              missingRequirements: result.missingRequirements
+              missingRequirements,
+              existingRecommendationTitles: additional ? existingTitles : []
             })
           }
         ]
@@ -78,11 +101,38 @@ async function createAiRecommendations(result, cv, jd) {
     if (!response.ok) throw new Error(`AI provider returned HTTP ${response.status}`);
     const payload = await response.json();
     const parsed = JSON.parse(payload.choices?.[0]?.message?.content || '{}');
-    if (!Array.isArray(parsed.recommendations)
-      || parsed.recommendations.some(item => typeof item !== 'string')) {
+    if (!Array.isArray(parsed.recommendations)) {
       throw new Error('AI provider returned an invalid recommendations array');
     }
-    return parsed.recommendations.slice(0, 5);
+    const seenTitles = new Set(existingTitles.map(normalizeText));
+    const recommendations = [];
+    for (const [index, raw] of parsed.recommendations.entries()) {
+      const item = typeof raw === 'string' ? { title: raw, action: raw } : raw;
+      if (!item || typeof item !== 'object') continue;
+      const requirement = gapsByName.get(normalizeText(item.requirement))
+        || missingRequirements[index % Math.max(1, missingRequirements.length)];
+      if (!requirement) continue;
+      const fallback = buildRuleBasedRecommendations([requirement])[0];
+      const suggestedTitle = typeof item.title === 'string' ? item.title.trim() : '';
+      const suggestedAction = typeof item.action === 'string' ? item.action.trim() : '';
+      const title = containsVietnamese(suggestedTitle) ? suggestedTitle : fallback.title;
+      const action = containsVietnamese(suggestedAction) ? suggestedAction : fallback.action;
+      if (!title || !action || seenTitles.has(normalizeText(title))) continue;
+      recommendations.push({
+        requirement: requirement.name,
+        category: requirement.category,
+        priority: requirement.priority,
+        title,
+        action,
+        duration: localizeDuration(item.duration),
+        source: process.env.OPENAI_MODEL || 'AI',
+        resources: learningResources(requirement)
+      });
+      seenTitles.add(normalizeText(title));
+      if (recommendations.length >= (additional ? 5 : 20)) break;
+    }
+    if (!recommendations.length) throw new Error('AI provider returned no unique recommendation');
+    return recommendations;
   } catch (cause) {
     const error = new Error('AI recommendations could not be generated', { cause });
     error.code = 'AI_RECOMMENDATION_FAILED';
@@ -127,7 +177,7 @@ app.post('/analyses', async (req, res) => {
     ]);
     const result = buildAnalysis(cv, jd);
     if (process.env.OPENAI_API_KEY && result.missingRequirements.length) {
-      result.recommendations = await createAiRecommendations(result, cv, jd);
+      result.recommendations = await createAiRecommendations(result, jd);
       result.recommendationProvider = process.env.OPENAI_MODEL || 'gpt-4o-mini';
     }
     const saved = await pool.query(
@@ -225,6 +275,59 @@ app.get('/analyses/:id/recommendations', async (req, res) => {
   } catch (error) {
     console.error('Analysis recommendations lookup failed:', error.message);
     res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+app.post('/analyses/:id/recommendations/more', async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ error: 'INVALID_ANALYSIS_ID' });
+  try {
+    const existing = await pool.query('SELECT id,jd_id,status,result FROM analyses WHERE id=$1', [req.params.id]);
+    if (!existing.rowCount) return res.status(404).json({ error: 'ANALYSIS_NOT_FOUND' });
+    if (existing.rows[0].status !== 'COMPLETED') {
+      return res.status(409).json({ error: 'ANALYSIS_NOT_COMPLETED', status: existing.rows[0].status });
+    }
+    const result = existing.rows[0].result;
+    if (!result.missingRequirements?.length) {
+      return res.status(409).json({ error: 'NO_SKILL_GAPS', message: 'CV đã đáp ứng các yêu cầu được trích xuất.' });
+    }
+    let additions;
+    if (process.env.OPENAI_API_KEY) {
+      const jd = await getWithRetry(`${jdBase}/jds/${existing.rows[0].jd_id}`);
+      additions = await createAiRecommendations(result, jd, result.recommendations || [], true);
+    } else {
+      additions = buildMoreRecommendations(result.missingRequirements, result.recommendations || []);
+    }
+    if (!additions.length) {
+      return res.status(409).json({
+        error: 'NO_MORE_UNIQUE_RECOMMENDATIONS',
+        message: 'Đã hiển thị các hướng đề xuất hiện có cho những yêu cầu còn thiếu.'
+      });
+    }
+    result.recommendations = [...(result.recommendations || []), ...additions];
+    if (process.env.OPENAI_API_KEY) result.recommendationProvider = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const saved = await pool.query(
+      'UPDATE analyses SET result=$1, updated_at=NOW() WHERE id=$2 RETURNING id,result',
+      [JSON.stringify(result), req.params.id]
+    );
+    return res.json({
+      analysisId: saved.rows[0].id,
+      added: additions,
+      recommendations: saved.rows[0].result.recommendations,
+      recommendationProvider: result.recommendationProvider
+    });
+  } catch (error) {
+    console.error('Additional recommendation generation failed:', error);
+    const status = error.status || (error.code === 'AI_RECOMMENDATION_FAILED' ? 502 : 503);
+    return res.status(status).json({
+      error: error.code === 'AI_RECOMMENDATION_FAILED'
+        ? 'AI_RECOMMENDATION_FAILED'
+        : status === 504
+          ? 'UPSTREAM_TIMEOUT'
+          : 'UPSTREAM_UNAVAILABLE',
+      message: error.code === 'AI_RECOMMENDATION_FAILED'
+        ? 'Không thể tạo thêm đề xuất bằng AI. Vui lòng thử lại sau.'
+        : 'Không thể tải dữ liệu JD hoặc service phụ thuộc đang không khả dụng.'
+    });
   }
 });
 

@@ -13,12 +13,14 @@ Mỗi service có source code, Dockerfile, OpenAPI và `GET /health`. Giao diệ
 
 ## Chạy toàn hệ thống
 
-1. Cài Docker Desktop (hoặc Docker Engine + Compose).
+1. Cài và mở Docker Desktop (hoặc Docker Engine + Compose).
 2. Tạo `.env` từ `.env.example` nếu chưa có file cấu hình.
-3. Tại thư mục gốc, chạy:
+3. Nếu dùng Ollama, mở Ollama trước khi upload CV/JD để AI phân tích. Nếu Ollama chưa tự chạy, mở một terminal riêng và chạy `ollama serve`; giữ terminal này mở. Kiểm tra model đã cài bằng `ollama list`.
+4. Mở PowerShell tại thư mục gốc dự án và khởi chạy:
 
-```bash
+```powershell
 docker compose up --build -d
+docker compose ps
 ```
 
 Web app và API Gateway: http://localhost:8080
@@ -30,6 +32,26 @@ CV Service: http://localhost:3001
 JD Service: http://localhost:3002
 
 Analysis Service: http://localhost:3003
+
+Kiểm tra health của Gateway và ba service từ PowerShell:
+
+```powershell
+$urls = @(
+  "http://localhost:8080/health",
+  "http://localhost:3001/health",
+  "http://localhost:3002/health",
+  "http://localhost:3003/health"
+)
+foreach ($url in $urls) {
+  Invoke-RestMethod $url | ConvertTo-Json -Compress
+}
+```
+
+Xem log khi cần tìm lỗi:
+
+```powershell
+docker compose logs -f api-gateway cv-service jd-service analysis-service
+```
 
 Dừng nhưng giữ dữ liệu: `docker compose down`
 
@@ -47,17 +69,43 @@ OpenAI-compatible AI extraction/recommendations được bật khi cấu hình `
 ## API chính
 
 - `POST /api/cvs` — tạo CV
+- `POST /api/cvs/:id/reanalyze` — phân tích lại CV đã lưu bằng cấu hình AI hiện tại
 - `GET /api/cvs` — danh sách CV
 - `GET /api/cvs/:id` — xem CV
 - `DELETE /api/cvs/:id` — xóa CV
 - `POST /api/jds` — tạo JD
 - `GET /api/jds` — danh sách JD
 - `GET /api/jds/:id` — xem JD
+- `POST /api/jds/:id/reanalyze` — phân tích lại yêu cầu trong JD đã lưu
 - `DELETE /api/jds/:id` — xóa JD
 - `POST /api/analyses` — phân tích CV với JD
 - `GET /api/analyses/:id` — xem kết quả
 - `GET /api/analyses/:id/skill-gaps` — xem kỹ năng còn thiếu
 - `GET /api/analyses/:id/recommendations` — xem đề xuất
+- `POST /api/analyses/:id/recommendations/more` — tạo và lưu thêm lộ trình học
+
+Match Score dùng trọng số must-have cao gấp đôi nice-to-have; kết quả cũng nêu riêng tỷ lệ đáp ứng yêu cầu bắt buộc và bằng chứng CV cho từng mục đã khớp. Đề xuất học tập có link tìm khóa học tiếng Việt và video hướng dẫn trên YouTube. Các link là trang tìm kiếm theo kỹ năng, không khẳng định một khóa học cụ thể đã được kiểm duyệt.
+
+## Kiểm thử API bằng Postman
+
+Collection kiểm thử nằm tại `postman/AI-CV-Analyzer.postman_collection.json`.
+Có thể import file này vào Postman Desktop, đặt **Working Directory** thành thư
+mục `postman`, rồi chọn **Run** để chạy collection. Hướng dẫn chi tiết ở
+[`postman/README.md`](./postman/README.md).
+
+Để chạy collection từ terminal bằng Newman, mở PowerShell tại thư mục gốc dự án
+và chạy:
+
+```powershell
+npx --yes newman run .\postman\AI-CV-Analyzer.postman_collection.json `
+  --working-dir .\postman --reporters cli `
+  --timeout-request 200000 --timeout 400000
+```
+
+Lệnh này chạy các health check và luồng CV/JD/analysis; file mẫu được lấy từ
+`postman/fixtures/`. Newman cần Node.js/npm và Docker Compose phải đang chạy.
+Collection xóa các bản ghi CV/JD kiểm thử sau khi tạo; bản ghi analysis được giữ
+lại.
 
 ### Ví dụ tạo CV
 

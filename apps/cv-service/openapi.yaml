@@ -111,7 +111,35 @@ paths:
           description: CV not found
   /cvs/{id}/file:
     get:
-      summary: Download the original uploaded CV file
+      summary: Download or preview the original uploaded CV file
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: inline
+          required: false
+          description: Set to true to preview a PDF inline in the browser. DOCX preview is not supported.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Original PDF or DOCX file; PDF may be rendered inline
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema: { type: string, format: binary }
+        '415':
+          description: Inline preview is supported only for PDF files
+        '404':
+          description: CV or its original file was not found
+  /cvs/{id}/reanalyze:
+    post:
+      summary: Reanalyze a saved CV from its extracted text
       parameters:
         - in: path
           name: id
@@ -121,14 +149,15 @@ paths:
             minimum: 1
       responses:
         '200':
-          description: Original PDF or DOCX file
+          description: CV with refreshed structured data
           content:
-            application/pdf:
-              schema: { type: string, format: binary }
-            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
-              schema: { type: string, format: binary }
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cv'
         '404':
-          description: CV or its original file was not found
+          description: CV not found
+        '502':
+          description: AI analysis failed
 components:
   schemas:
     Cv:
@@ -157,7 +186,7 @@ components:
           format: date-time
     ParsedCv:
       type: object
-      required: [personalInformation, education, technicalSkills, projects, experience, certifications, languages]
+      required: [personalInformation, education, technicalSkills, softSkills, projects, experience, certifications, awards, languages]
       properties:
         personalInformation:
           type: object
@@ -188,6 +217,9 @@ components:
               skills:
                 type: array
                 items: { type: string }
+        softSkills:
+          type: array
+          items: { type: string }
         projects:
           type: array
           items:
@@ -220,6 +252,15 @@ components:
               name: { type: string, nullable: true }
               issuer: { type: string, nullable: true }
               date: { type: string, nullable: true }
+        awards:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string, nullable: true }
+              issuer: { type: string, nullable: true }
+              date: { type: string, nullable: true }
+              details: { type: string, nullable: true }
         languages:
           type: array
           items:

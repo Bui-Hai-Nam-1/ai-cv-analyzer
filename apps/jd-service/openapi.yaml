@@ -79,6 +79,24 @@ paths:
         '204': { description: JD deleted }
         '400': { description: Invalid JD identifier }
         '404': { description: JD not found }
+  /jds/{id}/reanalyze:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      summary: Re-extract prioritized requirements for a saved JD
+      description: Useful after upgrading the extraction prompt or AI model. Heuristics are used if no AI key is configured.
+      responses:
+        '200':
+          description: JD requirements replaced with the latest extraction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobDescription' }
+        '400': { description: Invalid JD identifier }
+        '404': { description: JD not found }
+        '502': { description: Configured AI provider failed }
 components:
   schemas:
     JobDescription:

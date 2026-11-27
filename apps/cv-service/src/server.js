@@ -81,7 +81,8 @@ app.post('/cvs', upload.single('file'), async (req, res) => {
       savedFilePath = file.path;
       const buffer = await fs.readFile(file.path);
       const isPdf = path.extname(file.originalname).toLowerCase() === '.pdf';
-      if ((isPdf && buffer.subarray(0, 5).toString() !== '%PDF-')
+      const pdfHeaderOffset = buffer.indexOf('%PDF-');
+      if ((isPdf && (pdfHeaderOffset < 0 || pdfHeaderOffset >= 1024))
         || (!isPdf && !(buffer[0] === 0x50 && buffer[1] === 0x4b))) {
         return res.status(422).json({ error: 'INVALID_FILE', message: 'Tệp không đúng định dạng PDF hoặc DOCX.' });
       }
@@ -147,6 +148,28 @@ app.get('/cvs', async (_req, res) => {
   }
 });
 
+app.post('/cvs/:id/reanalyze', async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ error: 'INVALID_CV_ID' });
+  try {
+    const existing = await pool.query('SELECT content FROM cvs WHERE id=$1', [req.params.id]);
+    if (!existing.rowCount) return res.status(404).json({ error: 'CV_NOT_FOUND' });
+
+    const { data, provider } = await analyzeCv(existing.rows[0].content);
+    const updated = await pool.query(
+      'UPDATE cvs SET parsed_data=$1, analysis_provider=$2 WHERE id=$3 RETURNING *',
+      [JSON.stringify(data), provider, req.params.id]
+    );
+    return res.json(publicCv(updated.rows[0]));
+  } catch (error) {
+    console.error('CV reanalysis failed:', error);
+    const status = error.code === 'AI_ANALYSIS_FAILED' ? 502 : 500;
+    return res.status(status).json({
+      error: status === 502 ? 'CV_ANALYSIS_FAILED' : 'INTERNAL_ERROR',
+      message: status === 502 ? 'Không thể phân tích lại CV bằng AI. Vui lòng thử lại sau.' : 'Không thể phân tích lại CV.'
+    });
+  }
+});
+
 app.get('/cvs/:id', async (req, res) => {
   if (!validId(req.params.id)) return res.status(400).json({ error: 'INVALID_CV_ID' });
   try {
@@ -171,6 +194,19 @@ app.get('/cvs/:id/file', async (req, res) => {
     } catch (error) {
       if (error.code === 'ENOENT') return res.status(404).json({ error: 'CV_FILE_NOT_FOUND' });
       throw error;
+    }
+    if (req.query.inline === 'true') {
+      if (path.extname(cvFile.file_name || '').toLowerCase() !== '.pdf') {
+        return res.status(415).json({ error: 'CV_PREVIEW_UNSUPPORTED', message: 'Chỉ hỗ trợ xem trước file PDF.' });
+      }
+      res.type('application/pdf');
+      res.setHeader('Content-Disposition', 'inline');
+      return res.sendFile(cvFile.file_path, error => {
+        if (error) {
+          console.error('CV PDF preview failed:', error.message);
+          if (!res.headersSent) res.status(error.statusCode || 500).json({ error: 'INTERNAL_ERROR' });
+        }
+      });
     }
     return res.download(cvFile.file_path, cvFile.file_name || `cv-${req.params.id}`);
   } catch (error) {

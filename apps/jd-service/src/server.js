@@ -109,6 +109,31 @@ app.get('/jds', async (_req, res) => {
   }
 });
 
+app.post('/jds/:id/reanalyze', async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ error: 'INVALID_JD_ID' });
+  try {
+    const existing = await pool.query('SELECT content FROM job_descriptions WHERE id=$1', [req.params.id]);
+    if (!existing.rowCount) return res.status(404).json({ error: 'JD_NOT_FOUND' });
+    const { requirements, provider } = await analyzeJd(existing.rows[0].content);
+    const result = await pool.query(
+      `UPDATE job_descriptions
+       SET extracted_requirements=$1, analysis_provider=$2
+       WHERE id=$3 RETURNING *`,
+      [JSON.stringify(requirements), provider, req.params.id]
+    );
+    return res.json(result.rows[0]);
+  } catch (error) {
+    console.error('JD reanalysis failed:', error);
+    const status = error.code === 'JD_AI_ANALYSIS_FAILED' ? 502 : 500;
+    return res.status(status).json({
+      error: status === 502 ? 'JD_AI_ANALYSIS_FAILED' : 'INTERNAL_ERROR',
+      message: status === 502
+        ? 'Không thể phân tích lại JD bằng AI. Vui lòng kiểm tra cấu hình AI và thử lại.'
+        : 'Không thể phân tích lại JD.'
+    });
+  }
+});
+
 app.get('/jds/:id', async (req, res) => {
   if (!validId(req.params.id)) return res.status(400).json({ error: 'INVALID_JD_ID' });
   try {

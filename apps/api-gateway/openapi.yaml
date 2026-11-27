@@ -115,6 +115,18 @@ paths:
       responses:
         '204': { description: JD deleted }
         '404': { description: JD not found }
+  /api/jds/{id}/reanalyze:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      summary: Reanalyze requirements in a saved JD
+      responses:
+        '200': { description: Updated JD with prioritized requirements }
+        '404': { description: JD not found }
+        '502': { description: AI provider failure }
   /api/analyses:
     get:
       summary: List analyses
@@ -172,6 +184,19 @@ paths:
       responses:
         '200': { description: Recommendations }
         '404': { description: Analysis not found }
+  /api/analyses/{id}/recommendations/more:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      summary: Add more learning recommendations to a saved analysis
+      responses:
+        '200': { description: Additional recommendations and course/video search links }
+        '404': { description: Analysis not found }
+        '409': { description: No gaps or unique recommendations remain }
+        '502': { description: AI recommendation failure }
   /api/analysis:
     post:
       deprecated: true

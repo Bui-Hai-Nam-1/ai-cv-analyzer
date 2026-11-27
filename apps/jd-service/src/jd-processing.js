@@ -3,14 +3,16 @@ const mammoth = require('mammoth');
 const path = require('node:path');
 
 const categories = ['technical_skills', 'soft_skills', 'experience', 'education', 'language', 'other'];
+const preferredPattern = /\b(nice[\s-]*to[\s-]*have|preferred|preferably|bonus|optional|optionally|advantageous|desired)\b/i;
+const requirementHeadings = /^(?:requirements?|qualifications?|what you(?:'|’)ll bring|what we(?:'|’)re looking for|skills?|technical skills?|nice[\s-]*to[\s-]*have|must[\s-]*have|preferred qualifications?)$/i;
 
 function classifyCategory(text) {
   const value = text.toLowerCase();
-  if (/\b(english|vietnamese|language|ielts|toeic|japanese|korean|chinese)\b/.test(value)) return 'language';
+  if (/\b(english|vietnamese|language|ielts|toeic|toefl|japanese|korean|chinese|french|german)\b/.test(value)) return 'language';
   if (/\b(years?|experience|experienced|senior|junior|internship)\b/.test(value)) return 'experience';
   if (/\b(degree|bachelor|master|university|education|graduate|gpa)\b/.test(value)) return 'education';
-  if (/\b(communication|teamwork|leadership|problem.solving|adaptability|collaboration|soft skills)\b/.test(value)) return 'soft_skills';
-  if (/\b(skill|developer|programming|python|java|javascript|typescript|node|react|angular|vue|sql|database|docker|kubernetes|aws|azure|git|api|cloud|framework|fastapi|spring|\.net)\b/.test(value)) {
+  if (/\b(communication|teamwork|leadership|problem.solving|adaptability|collaboration|negotiation|critical thinking|time management|soft skills)\b/.test(value)) return 'soft_skills';
+  if (/\b(skill|programming|python|java|javascript|typescript|node(?:\.js)?|react|angular|vue|postgres(?:ql)?|mysql|mongodb|sql|database|docker|kubernetes|aws|azure|git|api|cloud|framework|fastapi|spring|\.net|c\+\+|c#|golang|ruby|php|linux|redis|kafka|graphql|terraform|machine learning|data analysis)\b/.test(value)) {
     return 'technical_skills';
   }
   return 'other';
@@ -18,17 +20,21 @@ function classifyCategory(text) {
 
 function normalizeRequirements(items) {
   if (!Array.isArray(items)) return [];
-  return items.map(item => {
+  const requirements = items.map(item => {
     const source = typeof item === 'string' ? { name: item } : item && typeof item === 'object' ? item : {};
     const name = typeof source.name === 'string' ? source.name.trim() : '';
     if (!name) return null;
-    const category = categories.includes(source.category) ? source.category : classifyCategory(name);
-    const priority = ['nice_to_have', 'nice-to-have'].includes(String(source.priority).toLowerCase())
+    const inferredCategory = classifyCategory(name);
+    const category = inferredCategory !== 'other'
+      ? inferredCategory
+      : categories.includes(source.category) ? source.category : 'other';
+    const priorityText = `${source.priority || ''} ${name} ${source.description || ''}`;
+    const priority = ['nice_to_have', 'nice-to-have'].includes(String(source.priority).toLowerCase()) || preferredPattern.test(priorityText)
       ? 'nice_to_have'
       : 'must_have';
-    const type = ['skill', 'requirement'].includes(source.type)
-      ? source.type
-      : ['technical_skills', 'soft_skills', 'language'].includes(category) ? 'skill' : 'requirement';
+    const type = ['technical_skills', 'soft_skills', 'language'].includes(category)
+      ? 'skill'
+      : source.type === 'skill' ? 'skill' : 'requirement';
     return {
       name,
       category,
@@ -37,28 +43,42 @@ function normalizeRequirements(items) {
       description: typeof source.description === 'string' ? source.description.trim() || null : null
     };
   }).filter(Boolean);
+  const unique = new Map();
+  for (const requirement of requirements) {
+    const key = `${requirement.category}:${requirement.name.toLowerCase().replace(/[^a-z0-9+#]+/g, ' ').trim()}`;
+    const previous = unique.get(key);
+    if (!previous || (previous.priority === 'nice_to_have' && requirement.priority === 'must_have')) {
+      unique.set(key, requirement);
+    }
+  }
+  return [...unique.values()];
 }
 
 function extractHeuristically(content) {
-  const lines = content.split(/\r?\n/).flatMap(line => {
-    const clean = line.trim().replace(/^(?:[-*•]|\d+[.)])\s*/, '');
-    if (!clean) return [];
-    const colon = clean.match(/^([^:]{2,40})\s*:\s*(.*)$/);
-    const value = colon ? colon[1] : clean;
-    const requirementText = colon ? colon[2] : value;
-    const priority = colon && /\b(nice.to.have|preferred|bonus|optional)\b/i.test(colon[1])
-      ? 'nice_to_have'
-      : 'must_have';
-    return requirementText.split(/[;,|]/).map(part => part.trim()).filter(Boolean)
-      .map(name => ({ name, priority }));
-  });
-  const requirements = lines.map(({ name, priority }) => ({
-    name,
-    category: classifyCategory(name),
-    priority: priority === 'nice_to_have' || /\b(nice.to.have|preferred|bonus|optional|plus|advantage)\b/i.test(name)
-      ? 'nice_to_have'
-      : 'must_have'
-  }));
+  let sectionPriority = 'must_have';
+  const requirements = [];
+  for (const line of String(content || '').split(/\r?\n/)) {
+    const clean = line.trim().replace(/^#+\s*/, '').replace(/^(?:[-*•]|\d+[.)])\s*/, '');
+    if (!clean) continue;
+    const colon = clean.match(/^([^:]{2,50})\s*:\s*(.*)$/);
+    const heading = colon ? colon[1].trim() : clean.replace(/:$/, '').trim();
+    const body = colon ? colon[2].trim() : clean;
+    if (requirementHeadings.test(heading)) {
+      sectionPriority = preferredPattern.test(heading) ? 'nice_to_have' : 'must_have';
+      if (!colon || !body) continue;
+    } else if (colon && preferredPattern.test(heading)) {
+      sectionPriority = 'nice_to_have';
+    } else if (colon && /\b(must[\s-]*have|required|requirements?)\b/i.test(heading)) {
+      sectionPriority = 'must_have';
+    }
+    if (/^(?:responsibilities|about the role|job description|what you(?:'|’)ll do|what we offer|benefits?)$/i.test(heading)) continue;
+    const linePriority = preferredPattern.test(`${heading} ${body}`) ? 'nice_to_have' : sectionPriority;
+    const cleanBody = body.replace(/\(?\b(nice[\s-]*to[\s-]*have|preferred|preferably|bonus|optional|advantageous|desired)\b\)?/ig, '').trim();
+    for (const part of cleanBody.split(/[;,|]/).map(value => value.trim()).filter(Boolean)) {
+      if (requirementHeadings.test(part) || part.length < 2) continue;
+      requirements.push({ name: part, category: classifyCategory(part), priority: linePriority });
+    }
+  }
   return normalizeRequirements(requirements);
 }
 
@@ -100,7 +120,7 @@ async function extractWithAi(content) {
         messages: [
           {
             role: 'system',
-            content: 'Extract explicit job requirements only. Return JSON: {"requirements":[{"name":"short requirement","category":"technical_skills|soft_skills|experience|education|language|other","priority":"must_have|nice_to_have","type":"skill|requirement","description":"optional detail or null"}]}. Classify explicit preferred/bonus/optional requirements as nice_to_have; classify other requirements as must_have. Do not invent requirements.'
+            content: 'Analyze the entire job description and extract each distinct, explicit candidate requirement. Ignore company marketing, benefits, responsibilities that are not qualifications, and section headings. Split lists of skills into one item per skill; preserve meaningful experience, education, language, soft-skill, and other constraints as requirements. Classify technical skills, soft skills, experience, education, language, and other requirements accurately. A requirement explicitly labelled preferred, nice-to-have, bonus, optional, or advantageous is nice_to_have; other explicit qualifications are must_have. Include a short verbatim context in description when useful; otherwise null. Do not infer or invent requirements. Return only JSON in this shape: {"requirements":[{"name":"concise requirement","category":"technical_skills|soft_skills|experience|education|language|other","priority":"must_have|nice_to_have","type":"skill|requirement","description":"short evidence from JD or null"}]}.'
           },
           { role: 'user', content }
         ]

@@ -138,5 +138,15 @@
       <footer class="footer"><span>CareerLens <span class="footer-dot">·</span> AI CV Analyzer</span><span>Built for your next chapter <span class="footer-heart">✦</span></span></footer>
     </main>
   </div>
+  <div class="cv-processing-overlay" id="cv-processing-overlay" role="status" aria-live="polite" aria-busy="true" hidden>
+    <div class="cv-processing-card">
+      <strong id="cv-progress-title">AI đang đọc CV</strong>
+      <div class="cv-progress-copy"><span id="cv-progress-label">Đang tải và phân tích hồ sơ</span><strong id="cv-progress-value">0%</strong></div>
+      <div class="cv-progress-track" role="progressbar" aria-label="Tiến trình ước tính xử lý" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span class="cv-progress-fill" id="cv-progress-fill"></span>
+      </div>
+      <p id="cv-progress-note">Phần trăm hiển thị là ước tính; sẽ hoàn tất khi hệ thống xử lý xong.</p>
+    </div>
+  </div>
 </body>
 </html>

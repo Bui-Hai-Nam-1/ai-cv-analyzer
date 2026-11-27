@@ -78,6 +78,24 @@ paths:
         '400': { description: Invalid analysis identifier }
         '404': { description: Analysis not found }
         '409': { description: Analysis is not completed }
+  /analyses/{id}/recommendations/more:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      summary: Generate and append additional learning recommendations
+      description: AI suggestions are paired with search links for Vietnamese courses and YouTube tutorials. Rule-based suggestions are used when no AI key is configured.
+      responses:
+        '200':
+          description: New recommendations appended to the saved analysis
+        '400': { description: Invalid analysis identifier }
+        '404': { description: Analysis not found }
+        '409': { description: Analysis is incomplete or no unique suggestions remain }
+        '502': { description: Configured AI provider failed }
+        '503': { description: JD service is unavailable }
+        '504': { description: JD service timed out }
 components:
   schemas:
     AnalysisRecord:
@@ -91,13 +109,43 @@ components:
           type: object
           properties:
             matchScore: { type: integer, minimum: 0, maximum: 100 }
+            mustHaveScore: { type: integer, minimum: 0, maximum: 100, nullable: true }
+            matchedMustHaveCount: { type: integer }
+            totalMustHaveCount: { type: integer }
+            totalRequirements: { type: integer }
             matchedSkills: { type: array, items: { type: string } }
             missingSkills: { type: array, items: { type: string } }
             matchedRequirements: { type: array, items: { type: object } }
             missingRequirements: { type: array, items: { type: object } }
-            recommendations: { type: array, items: { type: string } }
+            recommendations:
+              type: array
+              items:
+                oneOf:
+                  - type: string
+                  - $ref: '#/components/schemas/Recommendation'
             recommendationProvider: { type: string }
             breakdown: { type: object }
         error: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    Recommendation:
+      type: object
+      required: [requirement, title, action, resources]
+      properties:
+        requirement: { type: string }
+        category: { type: string }
+        priority: { type: string, enum: [must_have, nice_to_have] }
+        title: { type: string }
+        action: { type: string }
+        duration: { type: string, nullable: true }
+        source: { type: string }
+        resources:
+          type: array
+          items:
+            type: object
+            required: [label, type, url]
+            properties:
+              label: { type: string }
+              type: { type: string, enum: [course_search, video_search] }
+              language: { type: string }
+              url: { type: string, format: uri }
